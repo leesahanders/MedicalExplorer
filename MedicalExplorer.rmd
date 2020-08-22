@@ -1,0 +1,818 @@
+---
+title: "Medical Explorer V2"
+output:
+  flexdashboard::flex_dashboard:
+    vertical_layout: fill
+    orientation: rows
+    theme: yeti
+---
+
+
+```{css}
+.chart-wrapper {
+  overflow-y: scroll;
+}
+```
+
+   
+```{r setup, include=FALSE}
+library(tidyverse)
+library(googlesheets4)
+library(googledrive)
+library(flexdashboard)
+library(plotly)
+library(kableExtra)
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+library(plotly)
+library(scales)
+library("RColorBrewer")
+library(timevis)
+library(tufte)
+library(stringr)
+library(DT)
+library(tidyr)
+library(dplyr)
+library(sparkline)
+library(htmlwidgets)
+library(formattable)
+library(htmlwidgets)
+library(purrr)
+library(ggQC)
+library(qcc)
+library(patchwork)
+
+cache="C:/Users/Leesah/Documents/Cache"
+
+#Run this in the console before anything else to authenticate with google drive
+#googledrive::drive_auth(use_oob = TRUE, email = "lisamaeanders@gmail.com",cache=cache)
+
+#set global drive account
+options(gargle_oauth_email = "lisamaeanders@gmail.com")
+
+#connect using cached credentials
+googledrive::drive_auth(email = "lisamaeanders@gmail.com",cache=cache)
+
+#Make google sheets use the token from google drive
+gs4_auth(token = drive_token())
+
+drive_user()
+
+#See here for more details on the approach used: https://gargle.r-lib.org/articles/non-interactive-auth.html#project-level-oauth-cache
+
+#Load data from Google Drive
+
+Records <- read_sheet("https://docs.google.com/spreadsheets/d/19XInBvIBXgfDg3SBD5ZPddCo7111iFO-cMM3J667mCA/edit#gid=968544884", sheet = "Records")
+
+Doctors <- read_sheet("https://docs.google.com/spreadsheets/d/19XInBvIBXgfDg3SBD5ZPddCo7111iFO-cMM3J667mCA/edit#gid=968544884", sheet = "Doctors")
+
+Medicines <- read_sheet("https://docs.google.com/spreadsheets/d/19XInBvIBXgfDg3SBD5ZPddCo7111iFO-cMM3J667mCA/edit#gid=968544884", sheet = "Medicines")
+
+History <- read_sheet("https://docs.google.com/spreadsheets/d/19XInBvIBXgfDg3SBD5ZPddCo7111iFO-cMM3J667mCA/edit#gid=968544884", sheet = "History")
+
+Weight <- read_sheet("https://docs.google.com/spreadsheets/d/19XInBvIBXgfDg3SBD5ZPddCo7111iFO-cMM3J667mCA/edit#gid=968544884", sheet = "Weight")
+
+Thyroid <- read_sheet("https://docs.google.com/spreadsheets/d/19XInBvIBXgfDg3SBD5ZPddCo7111iFO-cMM3J667mCA/edit#gid=968544884", sheet = "Thyroid")
+
+Labs <- read_sheet("https://docs.google.com/spreadsheets/d/19XInBvIBXgfDg3SBD5ZPddCo7111iFO-cMM3J667mCA/edit#gid=968544884", sheet = "Labs")
+
+Temperature <- read_sheet("https://docs.google.com/spreadsheets/d/19XInBvIBXgfDg3SBD5ZPddCo7111iFO-cMM3J667mCA/edit#gid=968544884", sheet = "Temperature")
+
+Lisa_picture <- "MVIMG_20200402_143008.jpg"
+
+#googledrive functions 
+#googledrive::drive_find()
+#googledrive::drive_get()
+
+```
+
+
+```{r get-data, message=FALSE, include=FALSE}
+# #Load data from Google Drive
+# 
+# Records <- read_sheet("https://docs.google.com/spreadsheets/d/19XInBvIBXgfDg3SBD5ZPddCo7111iFO-cMM3J667mCA/edit#gid=968544884", sheet = "Records")
+# 
+# Doctors <- read_sheet("https://docs.google.com/spreadsheets/d/19XInBvIBXgfDg3SBD5ZPddCo7111iFO-cMM3J667mCA/edit#gid=968544884", sheet = "Doctors")
+# 
+# Medicines <- read_sheet("https://docs.google.com/spreadsheets/d/19XInBvIBXgfDg3SBD5ZPddCo7111iFO-cMM3J667mCA/edit#gid=968544884", sheet = "Medicines")
+# 
+# History <- read_sheet("https://docs.google.com/spreadsheets/d/19XInBvIBXgfDg3SBD5ZPddCo7111iFO-cMM3J667mCA/edit#gid=968544884", sheet = "History")
+# 
+# Weight <- read_sheet("https://docs.google.com/spreadsheets/d/19XInBvIBXgfDg3SBD5ZPddCo7111iFO-cMM3J667mCA/edit#gid=968544884", sheet = "Weight")
+# 
+# Thyroid <- read_sheet("https://docs.google.com/spreadsheets/d/19XInBvIBXgfDg3SBD5ZPddCo7111iFO-cMM3J667mCA/edit#gid=968544884", sheet = "Thyroid")
+# 
+# Labs <- read_sheet("https://docs.google.com/spreadsheets/d/19XInBvIBXgfDg3SBD5ZPddCo7111iFO-cMM3J667mCA/edit#gid=968544884", sheet = "Labs")
+# 
+# Temperature <- read_sheet("https://docs.google.com/spreadsheets/d/19XInBvIBXgfDg3SBD5ZPddCo7111iFO-cMM3J667mCA/edit#gid=968544884", sheet = "Temperature")
+# 
+# Lisa_picture <- "MVIMG_20200402_143008.jpg"
+# 
+# #googledrive functions 
+# #googledrive::drive_find()
+# #googledrive::drive_get()
+
+```
+
+Lisa Anders {data-orientation=columns}
+===================================== 
+
+Column 
+-------------------------------------
+
+```{r}
+#Placeholder for image
+
+```
+
+Hello! I developed this to better visualize my personal health data while I was going through some complicated medical evaluations. I hope you find this tool useful too.
+
+>Count Rugen: Get some rest. If you haven't got your health, you haven't got anything.
+
+>`r tufte::quote_footer('--- The Princess Bride, 1987 Film')`
+
+```{r, out.width = "50%"}
+#http://zevross.com/blog/2017/06/19/tips-and-tricks-for-working-with-images-and-figures-in-r-markdown-documents/
+#include_graphics("https://en.wikipedia.org/wiki/The_Princess_Bride_(film)#/media/File:Princess_bride.jpg")
+```
+
+
+Main {data-orientation=columns}
+===================================== 
+
+Column{data-width=350}
+-------------------------------------
+
+### Age 
+
+```{r}
+
+birthday = "1989-07-30"
+
+age = function(from, to) {
+  from_lt = as.POSIXlt(from)
+  to_lt = as.POSIXlt(to)
+
+  age = to_lt$year - from_lt$year
+
+  ifelse(to_lt$mon < from_lt$mon |
+         (to_lt$mon == from_lt$mon & to_lt$mday < from_lt$mday),
+         age - 1, age)
+}
+
+age = age(from = birthday,to = Sys.Date())
+
+# Show the number in a special valueBox (note the {.value-box} CSS class
+# above—that applies the CSS class to the HTML output and makes it render
+# correctly)
+# valueBox(value = age, icon = "fas fa-users")
+valueBox(value = age, icon = "far fa-hand-spock")
+```
+
+### Height
+
+```{r}
+currentHeight =paste0("5' 5",'"')
+
+# Show the number in a special valueBox (note the {.value-box} CSS class
+# above—that applies the CSS class to the HTML output and makes it render
+# correctly)
+valueBox(value = currentHeight, icon = "fas fa-rocket")
+```
+
+### Weight
+
+```{r}
+last_weight =  Weight %>% 
+  arrange(Date) %>% 
+  mutate(previous_weight = lag(Weight, order_by = Date), Date =as.Date(Date)) %>% 
+  mutate(Color = ifelse(Weight > previous_weight, "red", "green"),
+         Difference = paste0(ifelse(Weight > previous_weight, "+", "-"),round(Weight-previous_weight,1))) %>%
+  arrange(desc(Date)) %>%
+  head(1)
+  
+  currentWeight = paste0(last_weight$Weight, " (",last_weight$Difference, ") lbs")
+
+# Show the number in a special valueBox (note the {.value-box} CSS class
+# above—that applies the CSS class to the HTML output and makes it render
+# correctly)
+valueBox(value = currentWeight, icon = "fas fa-robot")
+```
+
+Column 
+-------------------------------------
+
+### Current medications
+
+```{r}
+# Collapse first column if contents repeat
+kable(Medicines %>% arrange(Treatment) %>% filter(is.na(EndDate)==TRUE) %>% select(-EndDate), align = "c") %>%
+  kable_styling(full_width = F) %>%
+  column_spec(1, bold = T) %>%
+  collapse_rows(columns = 1:2, valign = "top")
+
+```
+
+
+
+Allergies {data-orientation=columns}
+===================================== 
+
+### Allergen Information
+```{r}
+
+```
+
+
+
+Conditions {data-orientation=columns}
+===================================== 
+
+### Allergen Information
+```{r}
+
+```
+
+Immunizations {data-orientation=columns}
+===================================== 
+
+### Allergen Information
+```{r}
+
+```
+
+
+Thyroid {data-orientation=rows}
+===================================== 
+
+Rows 
+-------------------------------------
+
+### Last thyroid lab panel was on: 
+
+```{r}
+thycurrent_lab<- Records %>%
+  filter(Type == "Labs") 
+
+thycurrent_lab<- thycurrent_lab %>%
+  filter(Date == max(thycurrent_lab$Date, na.rm=T))
+
+thycurrent_lab = paste0(thycurrent_lab$Date)
+
+# Show the number in a special valueBox (note the {.value-box} CSS class
+# above—that applies the CSS class to the HTML output and makes it render
+# correctly)
+valueBox(value = thycurrent_lab, icon = "fas fa-rocket")
+```
+
+### Current thyroid medication is: 
+
+```{r}
+thycurrent_med<- Medicines %>%
+  filter(Treatment == "Hypothyroidism") %>%
+  mutate(Medicine = paste0(Medication," - ", Qty), StartDate = as.Date(StartDate), EndDate = as.Date(EndDate)) %>%
+  select(StartDate, EndDate,Medicine) 
+
+thycurrent_med<- thycurrent_med %>%
+  filter(StartDate == max(thycurrent_med$StartDate, na.rm=T))
+
+thycurrent_med = paste0(thycurrent_med$Medicine, " started on ", thycurrent_med$StartDate)
+
+# Show the number in a special valueBox (note the {.value-box} CSS class
+# above—that applies the CSS class to the HTML output and makes it render
+# correctly)
+valueBox(value = thycurrent_med, icon = "fas fa-rocket")
+```
+
+
+
+Rows {.tabset}
+-------------------------------------
+
+### Key Thyroid Metrics
+```{r}
+#Goal show the timeplots for each thyroid metric overlaid with changes in medication
+
+thy_med<- Medicines %>%
+  filter(Treatment == "Hypothyroidism") %>%
+  mutate(Medicine = paste0(Medication," - ", Qty), StartDate = as.Date(StartDate), EndDate = as.Date(EndDate)) %>%
+  select(StartDate, EndDate,Medicine) 
+
+thyroid_plot_data <- Thyroid %>% 
+  mutate(Date = as.Date(Date)) %>%
+  #mutate(Name = str_wrap(Name, width = 15)) %>%
+  arrange(Date) %>% 
+  filter(Name %in% c("Free T4 (ng/dL)", "Free T3 (pg/mL)") | grepl("TSH", Name, fixed = TRUE)) 
+  
+thyroid_plot <- thyroid_plot_data %>%  
+  ggplot(aes(x = Date, y= Value))+
+  geom_point(shape=1, aes(text = Name))+            # Use hollow circles
+  geom_line(color="black")+
+  geom_hline(aes(yintercept=LL), color = "red", linetype="dashed") + #Add LL
+  geom_hline(aes(yintercept=UL), color = "red", linetype="dashed") + #Add UL
+  geom_hline(aes(yintercept=Optimal), color = "green",size = 0.1, linetype="dashed") + #Add target
+  geom_vline(data = thy_med, aes(xintercept=as.numeric(EndDate), text = Medicine), color = "purple") + #Add medicine change dates
+  geom_vline(data = thy_med, aes(xintercept=as.numeric(StartDate), text = Medicine), color = "purple") + #Add medicine change dates
+  #facet_wrap(~ Name, ncol = 1, scales = "free_y", strip.position = "left") +
+  facet_grid(rows = vars(Name), scales = "free_y") +
+  labs(x = "", y = "Metric") +
+  scale_x_date(date_labels = "%Y/%m/%d", date_breaks = "1 month") +
+  theme(axis.text.x=element_text(angle=60, hjust=1), strip.text.y = element_text(angle = 0)) 
+
+ m <- list(
+    l = 0,
+    r = 200,
+    b = 0,
+    t = 0,
+    pad = 20
+  )
+ 
+gp <- ggplotly(thyroid_plot, dynamicTicks = TRUE) %>%
+  rangeslider() %>%
+  layout(hovermode = "x",
+  autosize=FALSE    
+  ) 
+
+
+for(i in 2:(length(unique(thyroid_plot_data$Name))+1)){
+  k = i*2-2
+  
+  gp[['x']][['layout']][['annotations']][[i]][['x']] <- 1.05#-0.1 # 2-7
+  gp[["x"]][["layout"]][["shapes"]][[k]][["x0"]] <-  225
+}
+
+gp[['x']][['layout']][['annotations']][[1]][['x']] <- -0.5
+gp %>% layout(margin =m)
+
+
+```
+
+### All Thyroid Metrics
+```{r}
+#Goal show the timeplots for each thyroid metric overlaid with changes in medication
+
+thy_med<- Medicines %>%
+  filter(Treatment == "Hypothyroidism") %>%
+  mutate(Medicine = paste0(Medication," - ", Qty), StartDate = as.Date(StartDate), EndDate = as.Date(EndDate)) %>%
+  select(StartDate, EndDate,Medicine) 
+
+thyroid_plot <- Thyroid %>% 
+  mutate(Date = as.Date(Date)) %>%
+  #mutate(Name = str_wrap(Name, width = 15)) %>%
+  arrange(Date) %>% 
+  ggplot(aes(x = Date, y= Value))+
+  geom_point(shape=1, aes(text = Name))+            # Use hollow circles
+  geom_line(color="black")+
+  geom_hline(aes(yintercept=LL), color = "red", linetype="dashed") + #Add LL
+  geom_hline(aes(yintercept=UL), color = "red", linetype="dashed") + #Add UL
+  geom_hline(aes(yintercept=Optimal), color = "green",size = 0.1, linetype="dashed") + #Add target
+  geom_vline(data = thy_med, aes(xintercept=as.numeric(EndDate), text = Medicine), color = "purple") + #Add medicine change dates
+  geom_vline(data = thy_med, aes(xintercept=as.numeric(StartDate), text = Medicine), color = "purple") + #Add medicine change dates
+  #facet_wrap(~ Name, ncol = 1, scales = "free_y", strip.position = "left") +
+  facet_grid(rows = vars(Name), scales = "free_y") +
+  labs(x = "", y = "Metric") +
+  scale_x_date(date_labels = "%Y/%m/%d", date_breaks = "1 month") +
+  theme(axis.text.x=element_text(angle=60, hjust=1), strip.text.y = element_text(angle = 0)) 
+
+ m <- list(
+    l = 0,
+    r = 200,
+    b = 0,
+    t = 0,
+    pad = 20
+  )
+ 
+gp <- ggplotly(thyroid_plot, dynamicTicks = TRUE) %>%
+  rangeslider() %>%
+  layout(hovermode = "x",
+  autosize=FALSE    
+  ) 
+
+
+for(i in 2:(length(unique(Thyroid$Name))+1)){
+  k = i*2-2
+  
+  gp[['x']][['layout']][['annotations']][[i]][['x']] <- 1.05#-0.1 # 2-7
+  gp[["x"]][["layout"]][["shapes"]][[k]][["x0"]] <-  225
+}
+
+gp[['x']][['layout']][['annotations']][[1]][['x']] <- -0.5
+gp %>% layout(margin =m)
+
+
+```
+
+Wellness {data-orientation=rows}
+=====================================
+
+Rows
+-------------------------------------
+
+### Weight
+```{r}
+
+weighttst <- Weight %>% 
+  arrange(Date) %>% 
+  mutate(previous_weight = lag(Weight, order_by = Date), Date =as.Date(Date)) %>% 
+  mutate(Color = ifelse(Weight > previous_weight, "red", "green")) %>%
+  ggplot(aes(x = Date, y= Weight, color = Color))+
+    geom_point(shape=1)+            # Use hollow circles
+    geom_line(color="grey")+
+    #geom_smooth() +            # Add a loess smoothed fit curve with confidence region
+    scale_color_identity() +
+    scale_x_date(date_labels = "%Y/%m/%d", date_breaks = "1 month") +
+    scale_y_continuous(limits=c(100, 175)) +
+    labs(x = "Year-Month", y = "Weight (lbs)") +
+    theme(axis.text.x=element_text(angle=60, hjust=1), legend.title = element_blank(), legend.position = "none" )
+
+ggplotly(weighttst) %>% 
+  layout(title = list(text = "Weight, gains in red", y = 0.95),
+     #xaxis = list(showticklabels = FALSE),
+     legend = list(orientation = "h",
+                   y = 0, x = 0))
+```
+
+### Temperature 
+```{r}
+# 
+# # Define levels to color by Type
+# temp_levels = unique(Temperature$Hour)
+# Temperature$Hour <- factor(Temperature$Hour, levels=temp_levels, ordered=TRUE)
+# 
+# # Define colors
+# color = brewer.pal(n = length(unique(Temperature$Hour)), name = "RdBu")
+
+temp <- Temperature %>% 
+  arrange(Date) %>% 
+  mutate(Waking_Temp = ifelse(Hour == 8, "red", "black")) %>%
+  ggplot(aes(x = as.Date(Date), y= Temp, color = Waking_Temp))+
+  # ggplot(aes(x = as.Date(Date), y= Temp, color = Waking_Temp))+
+    geom_point(shape=1)+            # Use hollow circles
+    geom_line(color="grey")+
+    #geom_smooth() +            # Add a loess smoothed fit curve with confidence region
+    scale_color_identity() +
+    scale_x_date(date_labels = "%Y/%m/%d", date_breaks = "1 month") +
+    scale_y_continuous(limits=c(92, 110)) +
+    labs(x = "Year-Month", y = "Temp (F)", legend = "Waking Temperature") +
+    #theme(axis.text.x=element_text(angle=60, hjust=1))
+    theme(axis.text.x=element_text(angle=60, hjust=1), legend.title = element_blank(), legend.position = "none" )
+
+ggplotly(temp) %>% 
+  layout(title = list(text = "Temperature, waking temp in red", y = 0.95),
+     #xaxis = list(showticklabels = FALSE),
+     legend = list(orientation = "h",
+                   y = 0, x = 0))
+
+
+```
+
+
+
+Labs {data-orientation=columns}
+===================================== 
+
+Column {.tabset}
+-------------------------------------
+
+### Summary / At a glance
+
+```{r}
+# style = "data-width: 100%;"
+#https://stackoverflow.com/questions/32841221/add-sparkline-graph-to-a-table
+#https://github.com/renkun-ken/formattable/issues/10
+#https://stackoverflow.com/questions/43251214/composited-sparkline-in-r-with-dt-and-shiny
+#https://timelyportfolio.github.io/dataui/articles/replicate_tufte_example.html
+#https://github.com/htmlwidgets/sparkline/issues/3
+#https://www.displayr.com/formattable/
+#https://stackoverflow.com/questions/32634640/sparkline-r-creating-html-table
+#https://stackoverflow.com/questions/42251594/r-combining-data-tables-dt-package-and-sparkline-package-box-plot-with-target-va
+#https://www.infoworld.com/article/3318222/how-to-add-sparklines-to-r-tables.html
+#https://stackoverflow.com/questions/43251214/composited-sparkline-in-r-with-dt-and-shiny
+#https://omnipotent.net/jquery.sparkline/#common
+#https://commons.wikimedia.org/wiki/MediaWiki:Gadget-jquery.sparkline.js
+#https://wiki.genexus.com/commwiki/servlet/wiki?16752,Sparkline+Control
+#https://martinctc.github.io/blog/vignette-downloadable-tables-in-rmarkdown-with-the-dt-package/
+#https://github.com/rstudio/flexdashboard/issues/117
+#https://groups.google.com/forum/#!topic/shiny-discuss/N5N0PqcBvuY
+#https://stackoverflow.com/questions/39775563/r-vertical-scroll-not-working
+#https://stackoverflow.com/questions/54244718/combining-sparkline-in-kableextra-table
+
+Labs_plot <- Labs %>%
+  rbind(Thyroid) %>%
+  #filter(Name %in% c("Ferritin (ng/mL)", "Alkaline Phosphatase (U/L)")) %>%
+  arrange(Date) %>%
+  filter(is.na(Value) != TRUE) %>%
+  filter(is.null(Value) != TRUE) %>%
+  filter(Value != "NULL") %>%
+  group_by(Name) 
+  
+Labs_plot_tmp <- data.frame()
+Labs_plot_out <- data.frame()
+
+for(j in (unique(Labs_plot$Name))){
+  #print(j)
+  
+  Labs_plot_tmp <- Labs_plot %>%
+    filter(Name %in% j) %>%
+    mutate(
+  TrendSparkLine = spk_chr(
+                       Value, type= "line", #One of 'line' (default), 'bar', 'tristate', 'discrete', 'bullet', 'pie' or 'box'
+                       # valueSpots = .$Value, 
+                       fillColor = FALSE, # "defaults to #cdf"
+                       normalRangeMin = min(unlist(.$LL)),
+                       normalRangeMax = max(unlist(.$UL)),
+                       normalRangeColor = "#cdf", #'lightgreen', #'#cdf"'
+                       lineWidth =5,
+                       # #drawNormalOnTop = TRUE,
+                       spotRadius = 5,
+                       spotColor = 'orange',
+                       maxSpotColor = 'orange',
+                       minSpotColor = 'orange',
+                       defaultPixelsPerValue = 10# defaults to 3 per value
+                       ),
+    TrendDiscrete_Low = spk_chr(
+                       Value, type= "discrete", #One of 'line' (default), 'bar', 'tristate', 'discrete', 'bullet', 'pie' or 'box'
+                       thresholdValue = min(unlist(.$LL)),
+                       thresholdColor = "red", #"#00f", # Color underneath the threshold
+                       lineColor = "green", # Color over the threshold
+                       lineWidth= 3 #defaults to 1
+                       ),
+  TrendDiscrete_High = spk_chr(
+                       Value, type= "discrete", #One of 'line' (default), 'bar', 'tristate', 'discrete', 'bullet', 'pie' or 'box'
+                       thresholdValue = max(unlist(.$UL)),
+                       thresholdColor = "green", #"#00f", # Color underneath the threshold
+                       lineColor = "red", # Color over the threshold
+                       lineWidth= 3 #defaults to 1
+                       ),
+  TrendBox = spk_chr(
+                       Value, type= "box", #One of 'line' (default), 'bar', 'tristate', 'discrete', 'bullet', 'pie' or 'box'
+                       showOutliers = TRUE
+                       ),
+      ) %>%
+  arrange(desc(Date)) %>%
+  mutate(Value =as.numeric(Value)) %>% #Make sure that everything is converted to a number
+  filter(is.na(Value) != TRUE) %>%
+  slice(1) %>% # Show most recent result only
+  select(-Note, -Optimal) 
+  
+  if(nrow(Labs_plot_out)<1){
+    Labs_plot_out <- Labs_plot_tmp
+  } else{
+    Labs_plot_out <- rbind(Labs_plot_out, Labs_plot_tmp)
+  }
+  
+}
+
+out <- Labs_plot_out %>%
+arrange(Category, Name) %>%
+mutate( UL = ifelse(is.null(UL) | is.na(UL) | is.nan(UL), Inf, UL ))  %>% #Set limit to inf if no limit
+mutate( LL = ifelse(is.null(LL) | is.na(LL) | is.nan(LL), -Inf, LL ))  %>% #Set limit to inf if no limit  
+mutate( Value = cell_spec(Value, "html", color = ifelse((Value > UL | Value < LL), "red", "green"))) %>% #Color if OOS         
+  formattable::format_table(
+  x = .,
+  formatters = list(
+    align=c("l")
+  )
+) %>%
+  kable_styling("striped", full_width = F) %>%
+  htmltools::HTML() %>%
+  shiny::div() %>%
+  sparkline::spk_add_deps()
+
+out
+
+```
+
+
+### Control Charts 
+```{r, out.width='100%', fig.width=10, fig.height=4, fig.align="left"}
+#, fig.width=15
+#out.width = "100%", fig.height = 5
+#dpi = 200
+# out.width = "100%"
+#https://cran.r-project.org/web/packages/ggQC/vignettes/XbarR_HOTTO.html
+#https://jmarriott.com/posts/testing-ggqc/
+#https://r-bar.net/ggqc-ggplot-quality-control-charts/
+#https://stackoverflow.com/questions/54400546/how-to-add-an-histogram-or-density-plot-on-the-right-hand-side-of-this-example-p
+#https://stackoverflow.com/questions/7705345/how-can-i-extract-plot-axes-ranges-for-a-ggplot2-object
+#https://stackoverflow.com/questions/55248191/if-condition-inside-ggplot?noredirect=1&lq=1
+#https://timelyportfolio.github.io/dataui/articles/replicate_tufte_example.html
+#https://patchwork.data-imaginist.com/articles/guides/assembly.html
+
+Labs_spc_raw <- Labs  %>%
+    rbind(Thyroid) %>%
+    #filter(Name %in% c("Ferritin (ng/mL)", "Alkaline Phosphatase (U/L)")) %>%
+    filter(is.na(Value) != TRUE) %>%
+    filter(is.null(Value) != TRUE) %>%
+    filter(Value != "NULL") %>%
+    mutate(Value = as.numeric(Value)) %>%
+    filter(is.na(Value) != TRUE)
+
+for(q in unique(Labs_spc_raw$Name)){
+  Labs_spc <- Labs_spc_raw  %>%
+    rbind(Thyroid) %>%
+    filter(Name %in% c(q)) %>%
+    arrange(Date)
+  
+  Labs_spc_plot <- Labs_spc %>%
+    arrange(Date) %>%
+    mutate(Run_Number = row_number()) %>%
+    select(Name, Value, Run_Number) %>%
+    rename("Process" = "Name") %>%
+    #mutate(Process = 1,Value =as.numeric(Value)) %>%
+    mutate(Value =as.numeric(Value)) %>%
+    ungroup()
+  
+  LL_flag = is.numeric(min(Labs_spc$LL, na.rm = TRUE)) 
+  UL_flag = is.numeric(max(Labs_spc$UL, na.rm = TRUE)) 
+  
+  if(LL_flag){LL = min(Labs_spc$LL)}
+  if(UL_flag){UL = max(Labs_spc$UL)}
+
+  y_range <- range(Labs_spc_plot$Value)
+   
+  ### Make the plot
+  XmR_Plot <- 
+    ggplot(Labs_spc_plot, aes(x = Run_Number, y = Value)) + #init ggplot
+    geom_point() + geom_line() + # add the points and lines
+    {if(LL_flag){geom_hline(aes(yintercept=(LL), color = "black"))}} +
+    {if(LL_flag){geom_label(aes(0,LL,label = paste0("LL-",LL)))}} +
+    {if(UL_flag){geom_hline(aes(yintercept=(UL), color = "black"))}} +
+    {if(UL_flag){geom_label(aes(0,UL,label = paste0("UL-",UL)))}} +
+    #if(!is.na(min(Labs_spc$LL))) geom_hline(data = Labs_plot, aes(yintercept=LL), color = "red", linetype="dashed") +  #Add LL
+    stat_QC(method = "XmR",      # specify QC charting method
+            auto.label = T,      # Use Autolabels
+            label.digits = 2,    # Use two digit in the label
+            show.1n2.sigma = T   # Show 1 and two sigma lines
+            ) +  
+    scale_x_continuous( expand =  expand_scale(mult = .15)) +  # Pad the x-axis
+    theme(axis.text.x=element_text(angle=60, hjust=1), legend.title = element_blank(), legend.position = "none" )
+  
+  # Get control chart range 
+  y_range=layer_scales(XmR_Plot)$y$range$range
+  
+  ### Create density plot
+  dens_plot <- ggplot(Labs_spc_plot, aes(x = Value)) +
+    geom_density() +
+    coord_flip() +
+    scale_x_continuous(limits = y_range) +
+    theme(axis.title.y = element_blank(), axis.text.x=element_text(angle=60, hjust=1), legend.title = element_blank(), legend.position = "none" )
+  
+  #y_dens=layer_scales(dens_plot)$x$range$range
+  
+  plot_out = 
+    #XmR_Plot + 
+    #dens_plot + 
+    #gridExtra::tableGrob(Labs_spc %>% select(Date, Value)) +
+    wrap_plots(XmR_Plot, dens_plot, gridExtra::tableGrob(Labs_spc %>% select(Date, Value)) ) +
+    plot_layout(nrow = 1, widths = c(1, 0.4,0.7,0.1)) + 
+    #plot_layout(nrow = 1, widths = c(.8, 0.2, 0.3)) + 
+    plot_annotation(
+  title = paste0(q),
+  #subtitle = paste0("Most recent"),
+  caption = paste0("Data from ",min(Labs_spc$Date), " to ",max(Labs_spc$Date)))
+  
+  print(plot_out)
+}
+
+```
+
+
+
+
+
+
+
+
+    
+Procedures {data-orientation=rows}
+===================================== 
+
+Rows {.tabset}
+-------------------------------------
+
+### Events
+
+```{r}
+History_plot <- History
+
+timevis_data <- data.frame(
+  id = 1:nrow(History_plot),
+  content = History_plot$Event,
+  start = History_plot$Date,
+  end   = c(rep(NA,nrow(History_plot))),
+  title = History_plot$Description
+)
+timevis(timevis_data)
+
+```
+
+```{r}
+kable(History %>% arrange(Date), align = "c") %>%
+  kable_styling(full_width = F) %>%
+  column_spec(1, bold = T) 
+
+```
+
+### Medications
+
+```{r}
+Medicines_plot <- Medicines %>%
+  mutate(EndDate = replace(EndDate, is.na(EndDate), Sys.Date())) %>%
+  mutate(Medicine = paste0(Medication," - ", Qty)) %>%
+  arrange(StartDate)
+
+timevis_data <- data.frame(
+  id = 1:nrow(Medicines_plot),
+  content = Medicines_plot$Medicine,
+  start = Medicines_plot$StartDate,
+  end   = Medicines_plot$EndDate,
+  title = Medicines_plot$Medicine,
+  group = Medicines_plot$Treatment
+)
+
+timeline_groups <- data.frame(
+  id = unique(Medicines_plot$Treatment),
+  content = unique(Medicines_plot$Treatment)
+)
+
+timevis(data = timevis_data, groups = timeline_groups, options = list(editable = FALSE))
+# timevis(data = timevis_data, groups = timeline_groups, options = list(editable = FALSE),showZoom = T,fit = TRUE,height = "800px")
+```
+
+```{r}
+# Collapse first column if contents repeat
+kable(Medicines %>% arrange(Treatment), align = "c") %>%
+  kable_styling(full_width = F) %>%
+  column_spec(1, bold = T) %>%
+  collapse_rows(columns = 1:2, valign = "top")
+
+```
+
+### Test records
+```{r}
+Records_plot <- Records
+
+# # Define levels to color by Type
+# Records_Levels = unique(Records_plot$Type)
+# Records_plot$Type <- factor(Records_plot$Type, levels=Records_Levels, ordered=TRUE)
+# 
+# # Define colors
+# color = brewer.pal(n = length(unique(Records_plot$Type)), name = "RdBu")
+
+timevis_data <- data.frame(
+  id = 1:nrow(Records_plot),
+  content = Records_plot$Type,
+  start = Records_plot$Date,
+  end   = c(rep(NA,nrow(Records_plot))),
+  title = Records_plot$Notes,
+  group = Records_plot$Type
+)
+
+timeline_groups <- data.frame(
+  id = unique(Records_plot$Type),
+  content = unique(Records_plot$Type)
+)
+
+timevis(data = timevis_data, groups = timeline_groups, options = list(editable = FALSE))
+# timevis(data = timevis_data, groups = timeline_groups, options = list(editable = FALSE),showZoom = T,fit = TRUE,height = "800px")
+
+```
+
+Providers
+===================================== 
+
+### Doctors
+    
+```{r}
+#Collapse first column if contents repeat
+kable(Doctors, align = "c") %>%
+  kable_styling(full_width = F) %>%
+  column_spec(1, bold = T) %>%
+  collapse_rows(columns = 1:2, valign = "top")
+
+
+```
+
+
+```{r}
+## References
+#https://www.andrewheiss.com/blog/2020/01/01/flexdashboard-dynamic-data/
+#https://rud.is/b/2019/01/24/quick-hit-automating-production-graphics-uploads-in-r-markdown-documents-with-googledrive/
+#https://gargle.r-lib.org/articles/non-interactive-auth.html#project-level-oauth-cache
+#https://cran.r-project.org/web/packages/kableExtra/vignettes/awesome_table_in_html.html
+#https://benalexkeen.com/creating-a-timeline-graphic-using-r-and-ggplot2/
+#https://stackoverflow.com/questions/3611314/calculate-ages-in-r/25450756#25450756
+#https://shiny.rstudio.com/gallery/dog-medical-history.html
+#https://www.ecanarys.com/Blogs/ArticleID/135/How-to-Host-your-Webpages-on-Google-Drive#:~:text=Now%20you%20can%20drag%20and,in%20the%20bottom%2Dright%20corner.
+#https://resources.github.com/whitepapers/github-and-rstudio/
+
+#Renames
+#Pastativity
+```
+
+
+
+
+
