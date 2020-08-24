@@ -632,10 +632,10 @@ out
 ```
 
 
-### Control Charts  
+ 
 
 ```{r, out.width='100%', fig.width=10, fig.height=4, fig.align="left"}
-
+### Control Charts 
 #   plot_out = 
 #     #XmR_Plot + 
 #     #dens_plot + 
