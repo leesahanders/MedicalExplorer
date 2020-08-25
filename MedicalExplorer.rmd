@@ -654,7 +654,8 @@ Labs_spc_raw <- Labs  %>%
     filter(is.null(Value) != TRUE) %>%
     filter(Value != "NULL") %>%
     mutate(Value = as.numeric(Value)) %>%
-    filter(is.na(Value) != TRUE)
+    filter(is.na(Value) != TRUE) %>%
+  unique()
 
 for(q in unique(Labs_spc_raw$Name)){
   Labs_spc <- Labs_spc_raw  %>%
@@ -857,7 +858,7 @@ Providers
     
 ```{r}
 #Collapse first column if contents repeat
-kable(Doctors, align = "c") %>%
+kable(Doctors %>% arrange(Category), align = "c") %>%
   kable_styling(full_width = F) %>%
   column_spec(1, bold = T) %>%
   collapse_rows(columns = 1:2, valign = "top")
