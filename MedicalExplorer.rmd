@@ -154,11 +154,17 @@ valueBox(value = currentHeight, icon = "fas fa-rocket")
 ### Weight
 
 ```{r}
-last_weight =  Weight %>% 
+Weight_v <- data.frame(Vitals) %>%
+  filter(Test == "Weight") %>%
+  rename("Weight" = "Value") %>%
+  mutate(Weight = as.numeric(Weight)) 
+
+
+last_weight =  Weight_v %>% 
   arrange(Date) %>% 
   mutate(previous_weight = lag(Weight, order_by = Date), Date =as.Date(Date)) %>% 
   mutate(Color = ifelse(Weight > previous_weight, "red", "green"),
-         Difference = paste0(ifelse(Weight > previous_weight, "+", "-"),round(Weight-previous_weight,1))) %>%
+         Difference = paste0(ifelse(Weight > previous_weight, "+", ""),round(Weight-previous_weight,1))) %>%
   arrange(desc(Date)) %>%
   head(1)
   
@@ -184,48 +190,139 @@ valueBox(value = currentBP, icon = "fas fa-clipboard-list")
 Rows
 -------------------------------------
 
-### Weight
+
+
+```{r}
+### Plot with gains highlighted
+# TODO: add conditional smoothing https://rafalab.github.io/dsbook/smoothing.html
+# Weight_v <- data.frame(Vitals) %>%
+#   filter(Test == "Weight") %>%
+#   rename("Weight" = "Value")
+# 
+# weighttst <- Weight_v %>% 
+#   arrange(Date) %>% 
+#   mutate(Weight = as.numeric(Weight)) %>%
+#   mutate(previous_weight = lag(Weight, order_by = Date), Date =as.Date(Date)) %>% 
+#   #mutate(test = ifelse(is.numeric(Weight),1,0))
+#   mutate(Color = ifelse(Weight > previous_weight, "red", "green")) %>%
+#   mutate(Color = ifelse(is.na(Color),"black", Color)) %>%
+#   # ggplot(aes(x = Date, y= Weight, color = Color))+
+#   ggplot(aes(x = Date, y= Weight))+
+#     geom_point(shape=1, aes(color = Color))+            # Use hollow circles
+#     #geom_smooth( method="lm", linetype = 'blank') +
+#     #stat_smooth(data = Weight, aes(x = Date,y = Weight), method="lm", linetype = 'blank') +
+#     #geom_line(color="grey")+
+#     #geom_smooth() +            # Add a loess smoothed fit curve with confidence region
+#     scale_color_identity() +
+#     scale_x_date(date_labels = "%Y/%m/%d", date_breaks = "3 month") +
+#     scale_y_continuous(limits=c(100, 175)) +
+#     labs(x = "Year-Month", y = "Weight (lbs)") +
+#     #theme(axis.text.x=element_text(angle=60, hjust=1), legend.title = element_blank(), legend.position = "none" )
+#     theme(axis.text.x=element_text(angle=60, hjust=1), 
+#           legend.title = element_blank(), 
+#           legend.position = "none",
+#           panel.border = element_blank(),
+#           panel.background = element_blank(),
+#           panel.grid.major = element_blank(),
+#           panel.grid.minor = element_blank()) 
+# 
+# ggplotly(weighttst) %>% 
+#   layout(title = list(text = "Weight, gains in red", y = 0.95),
+#      #xaxis = list(showticklabels = FALSE),
+#      legend = list(orientation = "h",
+#                    y = 0, x = 0))
+```
+
+### Weight measurements trend
 ```{r}
 # TODO: add conditional smoothing https://rafalab.github.io/dsbook/smoothing.html
 Weight_v <- data.frame(Vitals) %>%
   filter(Test == "Weight") %>%
-  rename("Weight" = "Value")
-
-weighttst <- Weight_v %>% 
-  arrange(Date) %>% 
+  rename("Weight" = "Value") %>%
   mutate(Weight = as.numeric(Weight)) %>%
-  mutate(previous_weight = lag(Weight, order_by = Date), Date =as.Date(Date)) %>% 
-  #mutate(test = ifelse(is.numeric(Weight),1,0))
-  mutate(Color = ifelse(Weight > previous_weight, "red", "green")) %>%
-  mutate(Color = ifelse(is.na(Color),"black", Color)) %>%
-  # ggplot(aes(x = Date, y= Weight, color = Color))+
-  ggplot(aes(x = Date, y= Weight))+
-    geom_point(shape=1, aes(color = Color))+            # Use hollow circles
-    #geom_smooth( method="lm", linetype = 'blank') +
-    #stat_smooth(data = Weight, aes(x = Date,y = Weight), method="lm", linetype = 'blank') +
-    #geom_line(color="grey")+
-    #geom_smooth() +            # Add a loess smoothed fit curve with confidence region
-    scale_color_identity() +
-    scale_x_date(date_labels = "%Y/%m/%d", date_breaks = "3 month") +
-    scale_y_continuous(limits=c(100, 175)) +
-    labs(x = "Year-Month", y = "Weight (lbs)") +
-    #theme(axis.text.x=element_text(angle=60, hjust=1), legend.title = element_blank(), legend.position = "none" )
-    theme(axis.text.x=element_text(angle=60, hjust=1), 
-          legend.title = element_blank(), 
+  arrange(Date) %>% 
+  mutate(previous_weight = lag(Weight, order_by = Date), Date =as.Date(Date)) 
+
+span <- 60
+
+fit <- with(Weight_v, 
+            ksmooth(Date, Weight, kernel = "box", bandwidth = span))
+
+fit <- data.frame(Date = fit$x, smooth = fit$y) %>%
+  mutate(smooth = as.numeric(smooth)) %>%
+  filter(!is.na(smooth))
+
+p <- Weight_v %>% #mutate(smooth = fit$y) %>%
+  #merge(fit,by=c("Date"), all=TRUE) %>%
+  ggplot(aes(Date, Weight)) +
+    geom_point(size = 1.5, alpha = .5, color = "grey") + 
+  geom_line(data = fit, aes(Date, smooth), color="salmon") +
+  #geom_smooth(span = 14, color="red")
+   scale_x_date(date_labels = "%Y/%m/%d", date_breaks = "3 month") +
+   #scale_y_continuous(limits=c(100, 175)) +
+   labs(x = "Year-Month", y = "Weight (lbs)") +
+    theme(axis.text.x=element_text(angle=60, hjust=1),
+          legend.title = element_blank(),
           legend.position = "none",
           panel.border = element_blank(),
           panel.background = element_blank(),
           panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank()) 
+          panel.grid.minor = element_blank())
 
-ggplotly(weighttst) %>% 
-  layout(title = list(text = "Weight, gains in red", y = 0.95),
+ggplotly(p) %>% 
+  layout(title = list(text = "Weight Trend (lbs)", y = 0.95),
      #xaxis = list(showticklabels = FALSE),
      legend = list(orientation = "h",
                    y = 0, x = 0))
+
+
 ```
 
+
 ### Temperature 
+```{r}
+
+temp <- Temperature %>% 
+  mutate(Date = as.Date(Date)) %>%
+  arrange(Date) %>% 
+  # Add flag for waking temperatures
+  mutate(Waking_Temp = ifelse( (Hour == 8) | (Hour == 7) | (Hour == 6), "black", "grey"))
+
+span <- 90
+
+fit <- with(temp %>% filter(Waking_Temp == "black"), 
+            ksmooth(Date, Temp, kernel = "box", bandwidth = span))
+
+fit <- data.frame(Date = fit$x, smooth = fit$y) %>%
+  mutate(smooth = as.numeric(smooth)) %>%
+  filter(!is.na(smooth))
+
+p <- temp %>% 
+  ggplot(aes(x = Date, y = Temp)) +
+    geom_point(size = 1.5, alpha = .5, color = "grey") + 
+  geom_line(data = fit, aes(Date, smooth), color="salmon") +
+  #geom_smooth(span = 14, color="red")
+   scale_x_date(date_labels = "%Y/%m/%d", date_breaks = "3 month") +
+   #scale_y_continuous(limits=c(100, 175)) +
+   labs(x = "Year-Month", y = "Weight (lbs)") +
+    theme(axis.text.x=element_text(angle=60, hjust=1),
+          legend.title = element_blank(),
+          legend.position = "none",
+          panel.border = element_blank(),
+          panel.background = element_blank(),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank())
+
+ggplotly(p) %>% 
+  layout(title = list(text = "Temperature Trend (F)", y = 0.95),
+     #xaxis = list(showticklabels = FALSE),
+     legend = list(orientation = "h",
+                   y = 0, x = 0))
+
+
+```
+
+
 ```{r}
 # 
 # # Define levels to color by Type
@@ -239,37 +336,37 @@ ggplotly(weighttst) %>%
 #   filter(Test == "Temperature") %>%
 #   rename("Temp" = "Value") %>%
 #   mutate()
-
-temp <- Temperature %>% 
-  arrange(Date) %>% 
-  # Add flag for waking temperatures
-  mutate(Waking_Temp = ifelse( (Hour == 8) | (Hour == 7) | (Hour == 6), "black", "grey")) %>%
-  # ggplot(aes(x = as.Date(Date), y= Temp, color = Waking_Temp))+
-  ggplot(aes(x = as.Date(Date), y= Temp))+
-  # ggplot(aes(x = as.Date(Date), y= Temp, color = Waking_Temp))+
-    geom_point(shape=1, aes(color = Waking_Temp)) +            # Use hollow circles
-    #geom_line(color="grey")+
-    #stat_smooth(method="lm", aes(color = Waking_Temp)) +
-    #stat_smooth() +
-    #geom_smooth() +            # Add a loess smoothed fit curve with confidence region
-    scale_color_identity() +
-    scale_x_date(date_labels = "%Y/%m/%d", date_breaks = "3 month") +
-    scale_y_continuous(limits=c(95, 105)) +
-    labs(x = "Year-Month", y = "Temp (F)", legend = "Waking Temperature") +
-    #theme(axis.text.x=element_text(angle=60, hjust=1))
-    theme(axis.text.x=element_text(angle=60, hjust=1), 
-          legend.title = element_blank(), 
-          legend.position = "none",
-          panel.border = element_blank(),
-          panel.background = element_blank(),
-          panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank()) 
-
-ggplotly(temp) %>% 
-  layout(title = list(text = "Temperature, waking temp in black", y = 0.95),
-     #xaxis = list(showticklabels = FALSE),
-     legend = list(orientation = "h",
-                   y = 0, x = 0))
+# 
+# temp <- Temperature %>% 
+#   arrange(Date) %>% 
+#   # Add flag for waking temperatures
+#   mutate(Waking_Temp = ifelse( (Hour == 8) | (Hour == 7) | (Hour == 6), "black", "grey")) %>%
+#   # ggplot(aes(x = as.Date(Date), y= Temp, color = Waking_Temp))+
+#   ggplot(aes(x = as.Date(Date), y= Temp))+
+#   # ggplot(aes(x = as.Date(Date), y= Temp, color = Waking_Temp))+
+#     geom_point(shape=1, aes(color = Waking_Temp)) +            # Use hollow circles
+#     #geom_line(color="grey")+
+#     #stat_smooth(method="lm", aes(color = Waking_Temp)) +
+#     #stat_smooth() +
+#     #geom_smooth() +            # Add a loess smoothed fit curve with confidence region
+#     scale_color_identity() +
+#     scale_x_date(date_labels = "%Y/%m/%d", date_breaks = "3 month") +
+#     scale_y_continuous(limits=c(95, 105)) +
+#     labs(x = "Year-Month", y = "Temp (F)", legend = "Waking Temperature") +
+#     #theme(axis.text.x=element_text(angle=60, hjust=1))
+#     theme(axis.text.x=element_text(angle=60, hjust=1), 
+#           legend.title = element_blank(), 
+#           legend.position = "none",
+#           panel.border = element_blank(),
+#           panel.background = element_blank(),
+#           panel.grid.major = element_blank(),
+#           panel.grid.minor = element_blank()) 
+# 
+# ggplotly(temp) %>% 
+#   layout(title = list(text = "Temperature, waking temp in black", y = 0.95),
+#      #xaxis = list(showticklabels = FALSE),
+#      legend = list(orientation = "h",
+#                    y = 0, x = 0))
 
 
 ```
@@ -654,82 +751,82 @@ out
 #https://timelyportfolio.github.io/dataui/articles/replicate_tufte_example.html
 #https://patchwork.data-imaginist.com/articles/guides/assembly.html
 
-Labs_spc_raw <- Labs  %>%
-    rbind(Thyroid) %>%
-    #filter(Name %in% c("Ferritin (ng/mL)", "Alkaline Phosphatase (U/L)")) %>%
-    filter(is.na(Value) != TRUE) %>%
-    filter(is.null(Value) != TRUE) %>%
-    filter(Value != "NULL") %>%
-    mutate(Value = as.numeric(Value)) %>%
-    filter(is.na(Value) != TRUE) %>%
-  unique()
-
-for(q in unique(Labs_spc_raw$Name)){
-  Labs_spc <- Labs_spc_raw  %>%
-    rbind(Thyroid) %>%
-    filter(Name %in% c(q)) %>%
-    arrange(Date)
-  
-  Labs_spc_plot <- Labs_spc %>%
-    arrange(Date) %>%
-    mutate(Run_Number = row_number()) %>%
-    select(Name, Value, Run_Number) %>%
-    rename("Process" = "Name") %>%
-    #mutate(Process = 1,Value =as.numeric(Value)) %>%
-    mutate(Value =as.numeric(Value)) %>%
-    ungroup()
-  
-  LL_flag = is.numeric(min(Labs_spc$LL, na.rm = TRUE)) 
-  UL_flag = is.numeric(max(Labs_spc$UL, na.rm = TRUE)) 
-  
-  if(LL_flag){LL = min(Labs_spc$LL)}
-  if(UL_flag){UL = max(Labs_spc$UL)}
-
-  y_range <- range(Labs_spc_plot$Value)
-   
-  ### Make the plot
-  XmR_Plot <- 
-    ggplot(Labs_spc_plot, aes(x = Run_Number, y = Value)) + #init ggplot
-    geom_point() + geom_line() + # add the points and lines
-    {if(LL_flag){geom_hline(aes(yintercept=(LL), color = "black"))}} +
-    {if(LL_flag){geom_label(aes(0,LL,label = paste0("LL-",LL)))}} +
-    {if(UL_flag){geom_hline(aes(yintercept=(UL), color = "black"))}} +
-    {if(UL_flag){geom_label(aes(0,UL,label = paste0("UL-",UL)))}} +
-    #if(!is.na(min(Labs_spc$LL))) geom_hline(data = Labs_plot, aes(yintercept=LL), color = "red", linetype="dashed") +  #Add LL
-    stat_QC(method = "XmR",      # specify QC charting method
-            auto.label = T,      # Use Autolabels
-            label.digits = 2,    # Use two digit in the label
-            show.1n2.sigma = T   # Show 1 and two sigma lines
-            ) +  
-    scale_x_continuous( expand =  expand_scale(mult = .15)) +  # Pad the x-axis
-    theme(axis.text.x=element_text(angle=60, hjust=1), legend.title = element_blank(), legend.position = "none" )
-  
-  # Get control chart range 
-  y_range=layer_scales(XmR_Plot)$y$range$range
-  
-  ### Create density plot
-  dens_plot <- ggplot(Labs_spc_plot, aes(x = Value)) +
-    geom_density() +
-    coord_flip() +
-    scale_x_continuous(limits = y_range) +
-    theme(axis.title.y = element_blank(), axis.text.x=element_text(angle=60, hjust=1), legend.title = element_blank(), legend.position = "none" )
-  
-  #y_dens=layer_scales(dens_plot)$x$range$range
-  
-  plot_out = 
-    #XmR_Plot + 
-    #dens_plot + 
-    #gridExtra::tableGrob(Labs_spc %>% select(Date, Value)) +
-    wrap_plots(XmR_Plot, dens_plot, gridExtra::tableGrob(Labs_spc %>% select(Date, Value)) ) +
-    plot_layout(nrow = 1, widths = c(1, 0.4,0.7,0.1)) + 
-    #plot_layout(nrow = 1, widths = c(.8, 0.2, 0.3)) + 
-    plot_annotation(
-  title = paste0(q),
-  #subtitle = paste0("Most recent"),
-  caption = paste0("Data from ",min(Labs_spc$Date), " to ",max(Labs_spc$Date)))
-  
-  print(plot_out)
-}
+# Labs_spc_raw <- Labs  %>%
+#     rbind(Thyroid) %>%
+#     #filter(Name %in% c("Ferritin (ng/mL)", "Alkaline Phosphatase (U/L)")) %>%
+#     filter(is.na(Value) != TRUE) %>%
+#     filter(is.null(Value) != TRUE) %>%
+#     filter(Value != "NULL") %>%
+#     mutate(Value = as.numeric(Value)) %>%
+#     filter(is.na(Value) != TRUE) %>%
+#   unique()
+# 
+# for(q in unique(Labs_spc_raw$Name)){
+#   Labs_spc <- Labs_spc_raw  %>%
+#     rbind(Thyroid) %>%
+#     filter(Name %in% c(q)) %>%
+#     arrange(Date)
+#   
+#   Labs_spc_plot <- Labs_spc %>%
+#     arrange(Date) %>%
+#     mutate(Run_Number = row_number()) %>%
+#     select(Name, Value, Run_Number) %>%
+#     rename("Process" = "Name") %>%
+#     #mutate(Process = 1,Value =as.numeric(Value)) %>%
+#     mutate(Value =as.numeric(Value)) %>%
+#     ungroup()
+#   
+#   LL_flag = is.numeric(min(Labs_spc$LL, na.rm = TRUE)) 
+#   UL_flag = is.numeric(max(Labs_spc$UL, na.rm = TRUE)) 
+#   
+#   if(LL_flag){LL = min(Labs_spc$LL)}
+#   if(UL_flag){UL = max(Labs_spc$UL)}
+# 
+#   y_range <- range(Labs_spc_plot$Value)
+#    
+#   ### Make the plot
+#   XmR_Plot <- 
+#     ggplot(Labs_spc_plot, aes(x = Run_Number, y = Value)) + #init ggplot
+#     geom_point() + geom_line() + # add the points and lines
+#     {if(LL_flag){geom_hline(aes(yintercept=(LL), color = "black"))}} +
+#     {if(LL_flag){geom_label(aes(0,LL,label = paste0("LL-",LL)))}} +
+#     {if(UL_flag){geom_hline(aes(yintercept=(UL), color = "black"))}} +
+#     {if(UL_flag){geom_label(aes(0,UL,label = paste0("UL-",UL)))}} +
+#     #if(!is.na(min(Labs_spc$LL))) geom_hline(data = Labs_plot, aes(yintercept=LL), color = "red", linetype="dashed") +  #Add LL
+#     stat_QC(method = "XmR",      # specify QC charting method
+#             auto.label = T,      # Use Autolabels
+#             label.digits = 2,    # Use two digit in the label
+#             show.1n2.sigma = T   # Show 1 and two sigma lines
+#             ) +  
+#     scale_x_continuous( expand =  expand_scale(mult = .15)) +  # Pad the x-axis
+#     theme(axis.text.x=element_text(angle=60, hjust=1), legend.title = element_blank(), legend.position = "none" )
+#   
+#   # Get control chart range 
+#   y_range=layer_scales(XmR_Plot)$y$range$range
+#   
+#   ### Create density plot
+#   dens_plot <- ggplot(Labs_spc_plot, aes(x = Value)) +
+#     geom_density() +
+#     coord_flip() +
+#     scale_x_continuous(limits = y_range) +
+#     theme(axis.title.y = element_blank(), axis.text.x=element_text(angle=60, hjust=1), legend.title = element_blank(), legend.position = "none" )
+#   
+#   #y_dens=layer_scales(dens_plot)$x$range$range
+#   
+#   plot_out = 
+#     #XmR_Plot + 
+#     #dens_plot + 
+#     #gridExtra::tableGrob(Labs_spc %>% select(Date, Value)) +
+#     wrap_plots(XmR_Plot, dens_plot, gridExtra::tableGrob(Labs_spc %>% select(Date, Value)) ) +
+#     plot_layout(nrow = 1, widths = c(1, 0.4,0.7,0.1)) + 
+#     #plot_layout(nrow = 1, widths = c(.8, 0.2, 0.3)) + 
+#     plot_annotation(
+#   title = paste0(q),
+#   #subtitle = paste0("Most recent"),
+#   caption = paste0("Data from ",min(Labs_spc$Date), " to ",max(Labs_spc$Date)))
+#   
+#   print(plot_out)
+# }
 
 ```
 
