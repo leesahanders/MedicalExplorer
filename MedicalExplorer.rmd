@@ -186,14 +186,16 @@ Rows
 
 ### Weight
 ```{r}
-# TODO: Switch from weight tab to vitals 
-# Weight_v <- data.frame(Vitals) %>%
-#   filter(Test == "Weight") %>%
-#   rename("Weight" = "Value")
+# TODO: add conditional smoothing https://rafalab.github.io/dsbook/smoothing.html
+Weight_v <- data.frame(Vitals) %>%
+  filter(Test == "Weight") %>%
+  rename("Weight" = "Value")
 
-weighttst <- Weight %>% 
+weighttst <- Weight_v %>% 
   arrange(Date) %>% 
+  mutate(Weight = as.numeric(Weight)) %>%
   mutate(previous_weight = lag(Weight, order_by = Date), Date =as.Date(Date)) %>% 
+  #mutate(test = ifelse(is.numeric(Weight),1,0))
   mutate(Color = ifelse(Weight > previous_weight, "red", "green")) %>%
   mutate(Color = ifelse(is.na(Color),"black", Color)) %>%
   # ggplot(aes(x = Date, y= Weight, color = Color))+
@@ -232,6 +234,11 @@ ggplotly(weighttst) %>%
 # 
 # # Define colors
 # color = brewer.pal(n = length(unique(Temperature$Hour)), name = "RdBu")
+
+# Temperature_v <- data.frame(Vitals) %>%
+#   filter(Test == "Temperature") %>%
+#   rename("Temp" = "Value") %>%
+#   mutate()
 
 temp <- Temperature %>% 
   arrange(Date) %>% 
