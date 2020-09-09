@@ -64,25 +64,25 @@ drive_user()
 
 #Load data from Google Drive
 
-Records <- read_sheet("https://docs.google.com/spreadsheets/d/19XInBvIBXgfDg3SBD5ZPddCo7111iFO-cMM3J667mCA/edit#gid=968544884", sheet = "Records")
+File = "https://docs.google.com/spreadsheets/d/1ycUwcrZkmSIh44YkqvTGOJWRjO2YmPvpJJcvorVof0U/edit#gid=932390330"
 
-Doctors <- read_sheet("https://docs.google.com/spreadsheets/d/19XInBvIBXgfDg3SBD5ZPddCo7111iFO-cMM3J667mCA/edit#gid=968544884", sheet = "Doctors")
+Records <- read_sheet(File, sheet = "Records")
 
-Medicines <- read_sheet("https://docs.google.com/spreadsheets/d/19XInBvIBXgfDg3SBD5ZPddCo7111iFO-cMM3J667mCA/edit#gid=968544884", sheet = "Medicines")
+Doctors <- read_sheet(File, sheet = "Doctors")
 
-History <- read_sheet("https://docs.google.com/spreadsheets/d/19XInBvIBXgfDg3SBD5ZPddCo7111iFO-cMM3J667mCA/edit#gid=968544884", sheet = "History")
+Medicines <- read_sheet(File, sheet = "Medicines")
 
-Weight <- read_sheet("https://docs.google.com/spreadsheets/d/19XInBvIBXgfDg3SBD5ZPddCo7111iFO-cMM3J667mCA/edit#gid=968544884", sheet = "Weight")
+History <- read_sheet(File, sheet = "History")
 
-Thyroid <- read_sheet("https://docs.google.com/spreadsheets/d/19XInBvIBXgfDg3SBD5ZPddCo7111iFO-cMM3J667mCA/edit#gid=968544884", sheet = "Thyroid")
+Thyroid <- read_sheet(File, sheet = "Thyroid")
 
-Labs <- read_sheet("https://docs.google.com/spreadsheets/d/19XInBvIBXgfDg3SBD5ZPddCo7111iFO-cMM3J667mCA/edit#gid=968544884", sheet = "Labs")
+Labs <- read_sheet(File, sheet = "Labs")
 
-Temperature <- read_sheet("https://docs.google.com/spreadsheets/d/19XInBvIBXgfDg3SBD5ZPddCo7111iFO-cMM3J667mCA/edit#gid=968544884", sheet = "Temperature")
+Temperature <- read_sheet(File, sheet = "Temperature")
 
-Vitals <- read_sheet("https://docs.google.com/spreadsheets/d/19XInBvIBXgfDg3SBD5ZPddCo7111iFO-cMM3J667mCA/edit#gid=968544884", sheet = "Vitals")
+Vitals <- read_sheet(File, sheet = "Vitals")
 
-Immunizations <- read_sheet("https://docs.google.com/spreadsheets/d/19XInBvIBXgfDg3SBD5ZPddCo7111iFO-cMM3J667mCA/edit#gid=968544884", sheet = "Immunizations")
+Immunizations <- read_sheet(File, sheet = "Immunizations")
 
 Lisa_picture <- "MVIMG_20200402_143008.jpg"
 
