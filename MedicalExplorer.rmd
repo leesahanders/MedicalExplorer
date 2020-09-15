@@ -42,12 +42,14 @@ library(purrr)
 library(ggQC)
 library(qcc)
 library(patchwork)
+library("ggTimeSeries")
 #https://cran.r-project.org/web/packages/prettydoc/vignettes/tactile.html
 
 cache="C:/Users/Leesah/Documents/Cache"
 
 #Run this in the console before anything else to authenticate with google drive
 #googledrive::drive_auth(use_oob = TRUE, email = "lisamaeanders@gmail.com",cache=cache)
+
 
 #set global drive account
 options(gargle_oauth_email = "lisamaeanders@gmail.com")
@@ -63,7 +65,6 @@ drive_user()
 #See here for more details on the approach used: https://gargle.r-lib.org/articles/non-interactive-auth.html#project-level-oauth-cache
 
 #Load data from Google Drive
-
 File = "https://docs.google.com/spreadsheets/d/1ycUwcrZkmSIh44YkqvTGOJWRjO2YmPvpJJcvorVof0U/edit#gid=932390330"
 
 Records <- read_sheet(File, sheet = "Records")
@@ -84,7 +85,10 @@ Vitals <- read_sheet(File, sheet = "Vitals")
 
 Immunizations <- read_sheet(File, sheet = "Immunizations")
 
+Period <- read_sheet(File, sheet = "Period")
+
 Lisa_picture <- "MVIMG_20200402_143008.jpg"
+
 
 #googledrive functions 
 #googledrive::drive_find()
@@ -923,8 +927,185 @@ out
 
 
 
+Womens Health {data-orientation=rows}
+===================================== 
+
+Row
+-------------------------------------
+    
+    
+### Last Period was on: 
+
+```{r}
+last_period =  Period %>% 
+  arrange(desc(Date)) %>% 
+  filter(grepl("eriod",Activity)) %>%
+  head(1)
+  
+lastPeriod = paste0(last_period$Date )
+
+valueBox(value = lastPeriod, icon = "fas fa-clipboard-list")
+```
+
+### Last Pap Smear was on: 
+
+```{r}
+current_record<- Records %>%
+  filter(Type == "PAP") 
+
+current_record<- current_record %>%
+  filter(Date == max(current_record$Date, na.rm=T))
+
+current_record = paste0(current_record$Date)
+
+# Show the number in a special valueBox (note the {.value-box} CSS class
+# above—that applies the CSS class to the HTML output and makes it render
+# correctly)
+valueBox(value = current_record, icon = "fas fa-rocket")
+```
+
+### Current Birth Control is: 
+
+```{r}
+# TODO: set up multiple line handling 
+current_med<- Medicines %>%
+  filter(Treatment == "Birth Control") %>%
+  mutate(Medicine = paste0(Medication," - ", Qty), StartDate = as.Date(StartDate), EndDate = as.Date(EndDate)) %>%
+  select(StartDate, EndDate,Medicine) 
+
+current_med<- current_med %>%
+  filter(StartDate == max(current_med$StartDate, na.rm=T))
+
+current_med = paste0(current_med$Medicine, collapse = " ")
+
+# Show the number in a special valueBox (note the {.value-box} CSS class
+# above—that applies the CSS class to the HTML output and makes it render
+# correctly)
+valueBox(value = current_med, icon = "fas fa-rocket")
+```
+
+Row
+-------------------------------------
+    
+
+### Cycle
+
+```{r}
+#Resources
+# https://vietle.info/post/calendarheatmap/
+# https://rdrr.io/cran/ggTimeSeries/man/ggplot_calendar_heatmap.html
+
+cycle_period =  Period %>% 
+  arrange(desc(Date)) %>% 
+  filter(grepl("eriod",Activity)) %>%
+  mutate(ValueCol = ifelse(grepl("eavy",Activity),3,2),
+         DateCol  = Date)
+
+cycle_bc = Period %>% 
+  arrange(desc(Date)) %>% 
+  filter(!grepl("eriod",Activity)) 
+  
+p1 = ggplot_calendar_heatmap(
+   cycle_period,
+   dayBorderSize = 0.25, dayBorderColour = "black",
+   monthBorderSize = 1, monthBorderColour = "black",
+   'DateCol',
+   'ValueCol'
+) + 
+  xlab(NULL) + ylab(NULL) + scale_fill_continuous(low = 'pink', high = 'pink', na.value = "grey90",) + theme( axis.text = element_blank(), axis.ticks = element_blank(), legend.position = 'none', strip.background = element_blank())  # strip.text = element_blank(), # useful if only one year of data plot.background = element_blank(), panel.border = element_blank(), panel.background = element_blank(), panel.grid = element_blank(), panel.border = element_blank() )
+p1
+# ggplot_calendar_heatmap(dtDateValue, cDateColumnName = "",
+#   cValueColumnName = "", vcGroupingColumnNames = "Year",
+#   dayBorderSize = 0.25, dayBorderColour = "black",
+#   monthBorderSize = 2, monthBorderColour = "black",
+#   monthBorderLineEnd = "round")
+
+```
+
+Rows {.tabset}
+-------------------------------------
 
 
+### Hormones 
+
+```{r}
+library(plotly)
+library(dplyr)
+library(tidyr)
+library(lubridate)
+library(tidyverse)
+library(rCharts)
+#install_github('ramnathv/rCharts', force= TRUE)
+
+
+
+#https://github.com/timelyportfolio/rCharts_dimple/blob/gh-pages/example_filters_controls_facet.R
+#http://timelyportfolio.github.io/rCharts_dimple/filters_controls_facet.html
+#https://github.com/ramnathv/rCharts/issues/365
+#https://stackoverflow.com/questions/48096600/can-i-make-a-line-plot-with-a-dropdown-menu-in-r-without-using-shiny-or-plotly
+
+df <- mtcars
+
+mtcars_long <- mtcars %>%
+  pivot_longer(5:length(mtcars), names_to = "Name", values_to = "Value")
+
+
+cols = colnames(df)
+
+plot <- plot_ly(df,
+                type = "scatter",
+                mode = "lines",
+                x = ~mpg,
+                # x = ~c,
+                y= ~df[[cols[[1]]]],
+                name = cols[[1]])
+
+
+
+for (col in cols[-1]) {
+  plot <- plot %>% add_lines(x = ~mpg, y = df[[col]], name = col, visible = FALSE)
+}
+
+
+plot <- plot %>%
+  layout(
+    title = "Dropdown line plot",
+    xaxis = list(title = "x"),
+    yaxis = list(title = "y"),
+    updatemenus = list(
+      list(
+        y = 0.7,
+        ## Add all buttons at once
+        buttons = lapply(cols, function(col) {
+          list(method="restyle",
+               args = list("visible", cols == col),
+               label = col)
+        })
+      )
+    )
+  )
+
+plot
+# 
+# plot <- hplot(data = df, x = mpg, y = hp, type = type = c("line",
+#                                                           "bubble", "scatter"), group = "Clap", size = "gear")
+# 
+# h1 <- hPlot(x = "Wr.Hnd", y = "NW.Hnd", data = MASS::survey, type = c("line",
+#                                                                       "bubble", "scatter"), group = "Clap", size = "Age")
+# h1$print("chart5")
+
+
+
+hair_eye_male <- subset(as.data.frame(HairEyeColor), Sex == "Male")
+n1 <- nPlot(Freq ~ Hair, group = "Eye", data = hair_eye_male, type = "multiBarChart")
+n1$print("chart3")
+
+
+#https://ramnathv.github.io/rCharts/
+#https://stackoverflow.com/questions/48096600/can-i-make-a-line-plot-with-a-dropdown-menu-in-r-without-using-shiny-or-plotly
+#https://stackoverflow.com/questions/48096600/can-i-make-a-line-plot-with-a-dropdown-menu-in-r-without-using-shiny-or-plotly
+#https://stackoverflow.com/questions/54858338/multiple-lines-traces-for-each-button-in-a-plotly-drop-down-menu-in-r
+```
 
 
 
@@ -1077,6 +1258,10 @@ kable(Doctors %>% arrange(Category), align = "c") %>%
 #Renames
 #Pastativity
 ```
+
+
+
+
 
 
 
