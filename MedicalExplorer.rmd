@@ -984,9 +984,11 @@ current_med = paste0(current_med$Medicine, collapse = " ")
 valueBox(value = current_med, icon = "fas fa-rocket")
 ```
 
-Row
+
+
+Rows {.tabset}
 -------------------------------------
-    
+
 
 ### Cycle
 
@@ -1021,10 +1023,6 @@ p1
 #   monthBorderLineEnd = "round")
 
 ```
-
-Rows {.tabset}
--------------------------------------
-
 
 ### Hormones 
 
