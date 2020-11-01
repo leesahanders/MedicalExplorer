@@ -191,7 +191,7 @@ valueBox(value = currentBP, icon = "fas fa-clipboard-list")
 ```
 
 
-Rows
+Rows {.tabset}
 -------------------------------------
 
 
@@ -236,6 +236,112 @@ Rows
 #      legend = list(orientation = "h",
 #                    y = 0, x = 0))
 ```
+
+### Trends
+
+```{r}
+
+thy_med<- Medicines %>%
+  filter(Treatment == "Hypothyroidism") %>%
+  mutate(Medicine = paste0(Medication," - ", Qty), StartDate = as.Date(StartDate), EndDate = as.Date(EndDate)) %>%
+  select(StartDate, EndDate,Medicine) 
+
+temp <- Temperature %>% 
+  mutate(Date = as.Date(Date)) %>%
+  arrange(Date) %>% 
+  rename("Value" = "Temp") %>%
+  select(Date, Hour, Value) %>%
+  mutate(Test = "Temperature F") #%>%
+  # Add flag for waking temperatures
+  #mutate(Waking_Temp = ifelse( (Hour == 8) | (Hour == 7) | (Hour == 6), "black", "grey"))
+
+vitals_trend <- data.frame(Vitals) %>%
+  #filter(Test == "Weight") %>%
+  select(Date, Test, Value) %>%
+  arrange(Date) %>%
+  mutate(Value = as.numeric(Value)) %>%
+  filter(is.numeric(Value)) %>%
+  unnest(cols = Value)
+
+vitals_trend <- bind_rows(vitals_trend, temp) %>%
+  mutate(Hour = ifelse(nchar(Hour) < 1 | is.na(Hour), 0, Hour))
+
+span <- 90
+
+# fit <- with(vitals_trend, # %>% filter(Waking_Temp == "black"), 
+#             ksmooth(Date, Temp, kernel = "box", bandwidth = span))
+# 
+# fit <- data.frame(Date = fit$x, smooth = fit$y) %>%
+#   mutate(smooth = as.numeric(smooth)) %>%
+#   filter(!is.na(smooth))
+
+# p <- vitals_trend %>% 
+#   ggplot(aes(x = Date, y = Value)) +
+#     geom_point(size = 1.5, alpha = .5, color = "grey") + 
+#   #geom_line(data = fit, aes(Date, smooth), color="salmon") +
+#   #geom_smooth(span = 14, color="red")
+#    scale_x_date(date_labels = "%Y/%m/%d", date_breaks = "3 month") +
+#    #scale_y_continuous(limits=c(100, 175)) +
+#    labs(x = "Year-Month", y = "Weight (lbs)") +
+#     theme(axis.text.x=element_text(angle=60, hjust=1),
+#           legend.title = element_blank(),
+#           legend.position = "none",
+#           panel.border = element_blank(),
+#           panel.background = element_blank(),
+#           panel.grid.major = element_blank(),
+#           panel.grid.minor = element_blank())
+# 
+
+
+p <- vitals_trend %>% 
+  mutate(Date = as.Date(Date)) %>%
+  arrange(Date, Hour) %>% 
+  ggplot(aes(x = Date, y= Value))+
+  geom_point(shape=1, aes(text = Test))+            # Use hollow circles
+  geom_line(color="black")+
+  #geom_hline(aes(yintercept=LL), color = "red", linetype="dashed") + #Add LL
+  #geom_hline(aes(yintercept=UL), color = "red", linetype="dashed") + #Add UL
+  #geom_hline(aes(yintercept=Optimal), color = "green",size = 0.1, linetype="dashed") + #Add target
+  geom_vline(data = thy_med, aes(xintercept=as.numeric(EndDate), text = Medicine), color = "white") + #Add medicine change dates
+  geom_vline(data = thy_med, aes(xintercept=as.numeric(StartDate), text = Medicine), color = "white") + #Add medicine change dates
+  facet_wrap(~ Test, ncol = 1, scales = "free_y", strip.position = "left") +
+  facet_grid(rows = vars(Test), scales = "free_y") +
+  labs(x = "", y = "Metric") +
+  scale_x_date(date_labels = "%Y/%m/%d", date_breaks = "1 month") +
+  # theme(axis.text.x=element_text(angle=60, hjust=1), strip.text.y = element_text(angle = 0)) 
+  theme(axis.text.x=element_text(angle=60, hjust=1), strip.text.y = element_text(angle = 0),
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+
+ m <- list(
+    l = 0,
+    r = 200,
+    b = 0,
+    t = 0,
+    pad = 20
+  )
+ 
+gp <- ggplotly(p, dynamicTicks = TRUE) %>%
+  rangeslider() %>%
+  layout(hovermode = "x",
+  autosize=FALSE    
+  ) 
+
+
+for(i in 2:(length(unique(vitals_trend$Test))+1)){
+  k = i*2-2
+  
+  gp[['x']][['layout']][['annotations']][[i]][['x']] <- 1.05#-0.1 # 2-7
+  gp[["x"]][["layout"]][["shapes"]][[k]][["x0"]] <-  225
+}
+
+gp[['x']][['layout']][['annotations']][[1]][['x']] <- -0.5
+gp %>% layout(margin =m)
+
+
+```
+
+
 
 ### Weight measurements trend
 ```{r}
@@ -770,6 +876,7 @@ for(j in (unique(Labs_plot$Name))){
 out_attention <- Labs_plot_out %>%
 arrange(Category, Name) %>%
 filter(OOS == 1) %>%
+filter(Date >= Sys.Date()-365) %>%
 mutate( UL = ifelse(is.null(UL) | is.na(UL) | is.nan(UL), Inf, UL ))  %>% #Set limit to inf if no limit
 mutate( LL = ifelse(is.null(LL) | is.na(LL) | is.nan(LL), -Inf, LL ))  %>% #Set limit to inf if no limit  
 mutate( Value = cell_spec(Value, "html", color = ifelse((Value > UL | Value < LL), "red", "green"))) %>% #Color if OOS      
@@ -992,20 +1099,31 @@ Rows {.tabset}
 
 ### Cycle
 
-```{r}
+```{r, fig.height=4, fig.width=6}
+#, out.width="50%"
+#, fig.height=3, fig.width=5
 #Resources
 # https://vietle.info/post/calendarheatmap/
 # https://rdrr.io/cran/ggTimeSeries/man/ggplot_calendar_heatmap.html
 
+dummy_row_today <- data.frame(Date = c(Sys.Date()))
+
+if(max(Period$Date) < Sys.Date() ){
+  Period<- bind_rows(Period, dummy_row_today)
+}
+
 cycle_period =  Period %>% 
   arrange(desc(Date)) %>% 
-  filter(grepl("eriod",Activity)) %>%
-  mutate(ValueCol = ifelse(grepl("eavy",Activity),3,2),
+  #filter(grepl("eriod",Activity)) %>%
+  mutate(ValueCol = ifelse(grepl("eriod",Activity), ifelse(grepl("eavy",Activity),3,2), NA),
          DateCol  = Date)
 
-cycle_bc = Period %>% 
+
+
+cycle_bc_period = Period %>% 
   arrange(desc(Date)) %>% 
-  filter(!grepl("eriod",Activity)) 
+  mutate(ValueCol = ifelse(grepl("eriod",Activity), 3, 0)) %>% # 3 for period, 0 for nuvaring
+  mutate()
   
 p1 = ggplot_calendar_heatmap(
    cycle_period,
@@ -1014,13 +1132,17 @@ p1 = ggplot_calendar_heatmap(
    'DateCol',
    'ValueCol'
 ) + 
-  xlab(NULL) + ylab(NULL) + scale_fill_continuous(low = 'pink', high = 'pink', na.value = "grey90",) + theme( axis.text = element_blank(), axis.ticks = element_blank(), legend.position = 'none', strip.background = element_blank())  # strip.text = element_blank(), # useful if only one year of data plot.background = element_blank(), panel.border = element_blank(), panel.background = element_blank(), panel.grid = element_blank(), panel.border = element_blank() )
+  xlab(NULL) + ylab(NULL) + scale_fill_continuous(low = 'pink', high = 'pink', na.value = "grey90",) + 
+  facet_wrap(~Year, ncol = 1) + 
+  theme( axis.ticks = element_blank(), legend.position = 'none', strip.background = element_blank()) 
+  # theme( axis.text = element_blank(), axis.ticks = element_blank(), legend.position = 'none', strip.background = element_blank()) 
+
 p1
-# ggplot_calendar_heatmap(dtDateValue, cDateColumnName = "",
-#   cValueColumnName = "", vcGroupingColumnNames = "Year",
-#   dayBorderSize = 0.25, dayBorderColour = "black",
-#   monthBorderSize = 2, monthBorderColour = "black",
-#   monthBorderLineEnd = "round")
+
+
+
+
+
 
 ```
 
@@ -1035,40 +1157,124 @@ library(tidyverse)
 library(rCharts)
 #install_github('ramnathv/rCharts', force= TRUE)
 
-
-
 #https://github.com/timelyportfolio/rCharts_dimple/blob/gh-pages/example_filters_controls_facet.R
 #http://timelyportfolio.github.io/rCharts_dimple/filters_controls_facet.html
 #https://github.com/ramnathv/rCharts/issues/365
 #https://stackoverflow.com/questions/48096600/can-i-make-a-line-plot-with-a-dropdown-menu-in-r-without-using-shiny-or-plotly
 
-df <- mtcars
+# hormones <- Labs_plot %>%
+#   filter(Category %in% c("Hormones", "Thyroid"))
+# 
+# 
+# df <- mtcars
+# 
+# mtcars_long <- mtcars %>%
+#   pivot_longer(5:length(mtcars), names_to = "Name", values_to = "Value")
+# 
+# 
+# cols = colnames(df)
+# 
+# plot <- plot_ly(df,
+#                 type = "scatter",
+#                 mode = "lines",
+#                 x = ~mpg,
+#                 # x = ~c,
+#                 y= ~df[[cols[[1]]]],
+#                 name = cols[[1]])
+# 
+# 
+# 
+# for (col in cols[-1]) {
+#   plot <- plot %>% add_lines(x = ~mpg, y = df[[col]], name = col, visible = FALSE)
+# }
+# 
+# 
+# plot <- plot %>%
+#   layout(
+#     title = "Dropdown line plot",
+#     xaxis = list(title = "x"),
+#     yaxis = list(title = "y"),
+#     updatemenus = list(
+#       list(
+#         y = 0.7,
+#         ## Add all buttons at once
+#         buttons = lapply(cols, function(col) {
+#           list(method="restyle",
+#                args = list("visible", cols == col),
+#                label = col)
+#         })
+#       )
+#     )
+#   )
+# 
+# plot
+# 
+# plot <- hplot(data = df, x = mpg, y = hp, type = type = c("line",
+#                                                           "bubble", "scatter"), group = "Clap", size = "gear")
+# 
+# h1 <- hPlot(x = "Wr.Hnd", y = "NW.Hnd", data = MASS::survey, type = c("line",
+#                                                                       "bubble", "scatter"), group = "Clap", size = "Age")
+# h1$print("chart5")
 
-mtcars_long <- mtcars %>%
-  pivot_longer(5:length(mtcars), names_to = "Name", values_to = "Value")
 
+
+# hair_eye_male <- subset(as.data.frame(HairEyeColor), Sex == "Male")
+# n1 <- nPlot(Freq ~ Hair, group = "Eye", data = hair_eye_male, type = "multiBarChart")
+# n1$print("chart3")
+
+
+#https://ramnathv.github.io/rCharts/
+#https://stackoverflow.com/questions/48096600/can-i-make-a-line-plot-with-a-dropdown-menu-in-r-without-using-shiny-or-plotly
+#https://stackoverflow.com/questions/48096600/can-i-make-a-line-plot-with-a-dropdown-menu-in-r-without-using-shiny-or-plotly
+#https://stackoverflow.com/questions/54858338/multiple-lines-traces-for-each-button-in-a-plotly-drop-down-menu-in-r
+
+
+
+hormones <- data.frame(Labs_plot,stringsAsFactors=FALSE) %>%
+  filter(Category %in% c("Hormones", "Thyroid")) %>%
+  select(Date, Name, Value) %>%
+  mutate_if(is.list, simplify_all) %>%    # flatten each list element internally 
+  unnest(cols = Value) %>%   # expand
+  ungroup() %>%
+  unique() %>%
+  # group_by(Date, Name) %>%
+  # count()
+  pivot_wider(names_from = Name, values_from = Value, values_fill = list(values = 0)) %>%
+  # pivot_wider(names_from = Name, values_from = Value, values_fill = 0) %>%
+  # pivot_wider(id_cols = Date, names_from = Name, values_from = Value, values_fill = 0) %>%
+  ungroup() #%>%
+  #mutate(test = is.null(`Testosterone, Free (pg/mL)`))
+  # mutate_if(is.character, 
+  #               str_replace_all, pattern = "NULL", replacement = 0) %>%
+  # replace(is.null(.), 0)
+
+#df <- hormones  %>% column_to_rownames(var="Date")
+
+df <- hormones  %>% select(-Date,Date)
 
 cols = colnames(df)
 
 plot <- plot_ly(df,
                 type = "scatter",
-                mode = "lines",
-                x = ~mpg,
-                # x = ~c,
-                y= ~df[[cols[[1]]]],
+                #mode = "lines",
+                mode = "lines+markers",
+                #mode = "markers",
+                x = ~Date,
+                y = ~df[[cols[[1]]]],
                 name = cols[[1]])
 
-
-
 for (col in cols[-1]) {
-  plot <- plot %>% add_lines(x = ~mpg, y = df[[col]], name = col, visible = FALSE)
+  #plot <- plot %>% add_lines(x = ~Date, y = df[[col]], name = col, visible = FALSE)
+  # plot <- plot %>% add_markers(x = ~Date, y = df[[col]], name = col, visible = FALSE)
+  plot <- plot %>% add_trace(x = ~Date, y = df[[col]], name = col, mode = "lines+markers", visible = FALSE)
 }
-
 
 plot <- plot %>%
   layout(
-    title = "Dropdown line plot",
-    xaxis = list(title = "x"),
+    title = "Dropdown Plots",
+    xaxis = list(title = "Date"),
+    # xaxis = list(title = "Date", range = c(min(df$Date), max(df$Date))),
+    # xaxis = list(type = "category", title = "Date", range = c(min(df$Date), max(df$Date))),
     yaxis = list(title = "y"),
     updatemenus = list(
       list(
@@ -1084,25 +1290,7 @@ plot <- plot %>%
   )
 
 plot
-# 
-# plot <- hplot(data = df, x = mpg, y = hp, type = type = c("line",
-#                                                           "bubble", "scatter"), group = "Clap", size = "gear")
-# 
-# h1 <- hPlot(x = "Wr.Hnd", y = "NW.Hnd", data = MASS::survey, type = c("line",
-#                                                                       "bubble", "scatter"), group = "Clap", size = "Age")
-# h1$print("chart5")
 
-
-
-hair_eye_male <- subset(as.data.frame(HairEyeColor), Sex == "Male")
-n1 <- nPlot(Freq ~ Hair, group = "Eye", data = hair_eye_male, type = "multiBarChart")
-n1$print("chart3")
-
-
-#https://ramnathv.github.io/rCharts/
-#https://stackoverflow.com/questions/48096600/can-i-make-a-line-plot-with-a-dropdown-menu-in-r-without-using-shiny-or-plotly
-#https://stackoverflow.com/questions/48096600/can-i-make-a-line-plot-with-a-dropdown-menu-in-r-without-using-shiny-or-plotly
-#https://stackoverflow.com/questions/54858338/multiple-lines-traces-for-each-button-in-a-plotly-drop-down-menu-in-r
 ```
 
 
