@@ -257,6 +257,7 @@ temp <- Temperature %>%
 
 vitals_trend <- data.frame(Vitals) %>%
   #filter(Test == "Weight") %>%
+  filter(Test %in% c("Weight", "BP systolic pressure (top number)", "BP diastolic pressure (bottom number)")) %>%
   select(Date, Test, Value) %>%
   arrange(Date) %>%
   mutate(Value = as.numeric(Value)) %>%
