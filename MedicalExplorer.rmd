@@ -1041,9 +1041,20 @@ out
 ```{r}
 # TODO: add conditional smoothing https://rafalab.github.io/dsbook/smoothing.html
 
-for(q in unique(Labs_plot$Name)){
+Labs_plot_tochart <- Labs_plot %>%
+#filter(Name %in% c("Ferritin (ng/mL)", "Alkaline Phosphatase (U/L)")) %>%
+mutate(Date = as.Date(Date, format = "%m/%d/%Y"))
+
+#Fixing known plotly error with knitr
+l <- htmltools::tagList()
+
+tests <- unique(Labs_plot$Name)
+
+# for(q in unique(Labs_plot$Name)){
+for(i in 1:length(tests) ){
+  q = tests[i]
   #q="Ferritin (ng/mL)"
-  Labs_charts <- Labs_plot  %>%
+  Labs_charts <- Labs_plot_tochart  %>%
     filter(Name %in% c(q)) %>%
     arrange(Date) 
 
@@ -1060,20 +1071,17 @@ for(q in unique(Labs_plot$Name)){
     filter(!is.na(smooth))
 
   p <- Labs_charts %>% #mutate(smooth = fit$y) %>%
-    mutate(Color = ifelse(OOS < 1, "grey", "red")) %>%
-    #merge(fit,by=c("Date"), all=TRUE) %>%
-    # ggplot(aes(Date, Value, color = Color)) +
+    mutate(Color = ifelse(OOS < 1, "grey", "salmon")) %>%
     ggplot(aes(Date, Value, color = Color)) +
     geom_point(size = 1.5, alpha = .5) + 
     scale_color_identity() +
-    #geom_point(size = 1.5, alpha = .5, color = "grey") + 
-    geom_line(color="grey")+
+    #geom_line(color="grey")+
     {if(is.numeric(limits$LL)) geom_hline(yintercept = limits$LL, color="lightblue") } + 
     {if(is.numeric(limits$Optimal)) geom_hline(yintercept = limits$Optimal, color="lightgreen")} +
     {if(is.numeric(limits$UL)) geom_hline(yintercept = limits$UL, color="lightblue")} +
-    geom_line(data = fit, aes(Date, smooth), color="salmon") +
+    geom_line(data = fit, aes(Date, smooth), color="grey") +
     #geom_smooth(span = 14, color="red")
-     #scale_x_date(date_labels = "%Y/%m/%d", date_breaks = "3 month") +
+    scale_x_date(date_labels = "%Y/%m/%d", date_breaks = "3 month") +
     #scale_y_continuous(limits=c(limits$LL, limits$UL)) +
      #scale_y_continuous(limits=c(100, 175)) +
      labs(x = "Year-Month", y = q) +
@@ -1085,14 +1093,16 @@ for(q in unique(Labs_plot$Name)){
             panel.grid.major = element_blank(),
             panel.grid.minor = element_blank()) 
   
-  plot_out <- ggplotly(p) %>% 
+  l[[i]] <- ggplotly(p) %>% 
     layout(title = list(text = q, y = 0.95),
        #xaxis = list(showticklabels = FALSE),
        legend = list(orientation = "h",
                      y = 0, x = 0))
   
-  print(plot_out)
+  #print(plot_out)
 }
+
+l
 
 ```
 
