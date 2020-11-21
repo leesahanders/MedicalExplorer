@@ -83,6 +83,8 @@ Temperature <- read_sheet(File, sheet = "Temperature")
 
 Vitals <- read_sheet(File, sheet = "Vitals")
 
+Limits <- read_sheet(File, sheet = "Limits")
+
 Immunizations <- read_sheet(File, sheet = "Immunizations")
 
 Period <- read_sheet(File, sheet = "Period")
@@ -260,8 +262,11 @@ vitals_trend <- data.frame(Vitals) %>%
   filter(Test %in% c("Weight", "BP systolic pressure (top number)", "BP diastolic pressure (bottom number)")) %>%
   select(Date, Test, Value) %>%
   arrange(Date) %>%
-  mutate(Value = as.numeric(Value)) %>%
-  filter(is.numeric(Value)) %>%
+  #filter(!is.null(Value)) %>%
+  #filter(is.numeric(as.numeric(Value))) %>%
+  #mutate(Value = as.numeric(Value)) %>%
+  mutate(Value = as.numeric(as.character(Value))) %>%
+  filter(!is.na(Value)) %>%
   unnest(cols = Value)
 
 vitals_trend <- bind_rows(vitals_trend, temp) %>%
@@ -347,6 +352,10 @@ gp %>% layout(margin =m)
 ### Weight measurements trend
 ```{r}
 # TODO: add conditional smoothing https://rafalab.github.io/dsbook/smoothing.html
+
+limits <- Limits %>%
+  filter(Name == "Weight")
+
 Weight_v <- data.frame(Vitals) %>%
   filter(Test == "Weight") %>%
   rename("Weight" = "Value") %>%
@@ -368,8 +377,12 @@ p <- Weight_v %>% #mutate(smooth = fit$y) %>%
   ggplot(aes(Date, Weight)) +
     geom_point(size = 1.5, alpha = .5, color = "grey") + 
   geom_line(data = fit, aes(Date, smooth), color="salmon") +
+  geom_hline(yintercept = limits$LL, color="lightblue") +
+  geom_hline(yintercept = limits$Optimal, color="lightgreen") +
+  geom_hline(yintercept = limits$UL, color="lightblue") +
   #geom_smooth(span = 14, color="red")
    scale_x_date(date_labels = "%Y/%m/%d", date_breaks = "3 month") +
+  #scale_y_continuous(limits=c(limits$LL, limits$UL)) +
    #scale_y_continuous(limits=c(100, 175)) +
    labs(x = "Year-Month", y = "Weight (lbs)") +
     theme(axis.text.x=element_text(angle=60, hjust=1),
@@ -392,6 +405,8 @@ ggplotly(p) %>%
 
 ### Temperature 
 ```{r}
+limits <- Limits %>%
+  filter(Name == "Temperature")
 
 temp <- Temperature %>% 
   mutate(Date = as.Date(Date)) %>%
@@ -412,10 +427,14 @@ p <- temp %>%
   ggplot(aes(x = Date, y = Temp)) +
     geom_point(size = 1.5, alpha = .5, color = "grey") + 
   geom_line(data = fit, aes(Date, smooth), color="salmon") +
+  geom_hline(yintercept = limits$LL, color="lightblue") +
+  geom_hline(yintercept = limits$Optimal, color="lightgreen") +
+  geom_hline(yintercept = limits$UL, color="lightblue") +
   #geom_smooth(span = 14, color="red")
    scale_x_date(date_labels = "%Y/%m/%d", date_breaks = "3 month") +
+  #scale_y_continuous(limits=c(limits$LL, limits$UL)) +
    #scale_y_continuous(limits=c(100, 175)) +
-   labs(x = "Year-Month", y = "Weight (lbs)") +
+   labs(x = "Year-Month", y = "Temperautre (F)") +
     theme(axis.text.x=element_text(angle=60, hjust=1),
           legend.title = element_blank(),
           legend.position = "none",
@@ -483,16 +502,12 @@ ggplotly(p) %>%
 ```
 
 
-
-Rows
--------------------------------------
-
-
-
-
 ### Systolic Blood Pressure trend
 ```{r}
 # TODO: add conditional smoothing https://rafalab.github.io/dsbook/smoothing.html
+limits <- Limits %>%
+  filter(Name == "BP systolic pressure (top number)")
+
 bp_v <- data.frame(Vitals) %>%
   filter(Test == "BP systolic pressure (top number)") %>%
   mutate(Value = as.numeric(Value)) %>%
@@ -513,7 +528,11 @@ p <- bp_v %>%
   ggplot(aes(Date, Value)) +
     geom_point(size = 1.5, alpha = .5, color = "grey") + 
   geom_line(data = fit, aes(Date, smooth), color="salmon") +
+  geom_hline(yintercept = limits$LL, color="lightblue") +
+  geom_hline(yintercept = limits$Optimal, color="lightgreen") +
+  geom_hline(yintercept = limits$UL, color="lightblue") +
    scale_x_date(date_labels = "%Y/%m/%d", date_breaks = "3 month") +
+  #scale_y_continuous(limits=c(limits$LL, limits$UL)) +
    labs(x = "Year-Month", y = "Blood Pressure (mm Hg)") +
     theme(axis.text.x=element_text(angle=60, hjust=1),
           legend.title = element_blank(),
@@ -535,6 +554,10 @@ ggplotly(p) %>%
 ### Diastolic Blood Pressure trend
 ```{r}
 # TODO: add conditional smoothing https://rafalab.github.io/dsbook/smoothing.html
+
+limits <- Limits %>%
+  filter(Name == "BP diastolic pressure (bottom number)")
+
 bp_v <- data.frame(Vitals) %>%
   filter(Test == "BP diastolic pressure (bottom number)") %>%
   mutate(Value = as.numeric(Value)) %>%
@@ -555,7 +578,11 @@ p <- bp_v %>%
   ggplot(aes(Date, Value)) +
     geom_point(size = 1.5, alpha = .5, color = "grey") + 
   geom_line(data = fit, aes(Date, smooth), color="salmon") +
+  geom_hline(yintercept = limits$LL, color="lightblue") +
+  geom_hline(yintercept = limits$Optimal, color="lightgreen") +
+  geom_hline(yintercept = limits$UL, color="lightblue") +
    scale_x_date(date_labels = "%Y/%m/%d", date_breaks = "3 month") +
+   #scale_y_continuous(limits=c(limits$LL, limits$UL)) +
    labs(x = "Year-Month", y = "Blood Pressure (mm Hg)") +
     theme(axis.text.x=element_text(angle=60, hjust=1),
           legend.title = element_blank(),
@@ -566,15 +593,60 @@ p <- bp_v %>%
           panel.grid.minor = element_blank())
 
 ggplotly(p) %>% 
-  layout(title = list(text = "Diastolic Blood Pressure (mm Hg)", y = 0.95),
+  layout(title = list(text = "BP diastolic pressure (mm Hg)", y = 0.95),
      #xaxis = list(showticklabels = FALSE),
      legend = list(orientation = "h",
                    y = 0, x = 0))
 
-
 ```
 
 
+### Heart Rate trend
+```{r}
+# TODO: add conditional smoothing https://rafalab.github.io/dsbook/smoothing.html
+limits <- Limits %>%
+  filter(Name == "HR")
+
+hr_v <- data.frame(Vitals) %>%
+  filter(Test == "HR") %>%
+  mutate(Value = as.numeric(Value)) %>%
+  arrange(Date) %>% 
+  mutate(previous_weight = lag(Value, order_by = Date), Date =as.Date(Date)) 
+
+span <- 60
+
+fit <- with(hr_v, 
+            ksmooth(Date, Value, kernel = "box", bandwidth = span))
+
+fit <- data.frame(Date = fit$x, smooth = fit$y) %>%
+  mutate(smooth = as.numeric(smooth)) %>%
+  filter(!is.na(smooth))
+
+p <- hr_v %>% 
+  ggplot(aes(Date, Value)) +
+    geom_point(size = 1.5, alpha = .5, color = "grey") + 
+  geom_line(data = fit, aes(Date, smooth), color="salmon") +
+  geom_hline(yintercept = limits$LL, color="lightblue") +
+  geom_hline(yintercept = limits$Optimal, color="lightgreen") +
+  geom_hline(yintercept = limits$UL, color="lightblue") +
+   scale_x_date(date_labels = "%Y/%m/%d", date_breaks = "3 month") +
+   #scale_y_continuous(limits=c(limits$LL, limits$UL)) +
+   labs(x = "Year-Month", y = "Heart Rate (bpm)") +
+    theme(axis.text.x=element_text(angle=60, hjust=1),
+          legend.title = element_blank(),
+          legend.position = "none",
+          panel.border = element_blank(),
+          panel.background = element_blank(),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank())
+
+ggplotly(p) %>% 
+  layout(title = list(text = "Heart Rate (bpm)", y = 0.95),
+     #xaxis = list(showticklabels = FALSE),
+     legend = list(orientation = "h",
+                   y = 0, x = 0))
+
+```
 
 
 
@@ -798,6 +870,7 @@ Labs_plot <- Labs %>%
   rbind(Thyroid) %>%
   #filter(Name %in% c("Ferritin (ng/mL)", "Alkaline Phosphatase (U/L)")) %>%
   arrange(Date) %>%
+  mutate(Value = as.numeric(as.character(Value))) %>%
   filter(is.na(Value) != TRUE) %>%
   filter(is.null(Value) != TRUE) %>%
   filter(Value != "NULL") %>%
@@ -807,7 +880,8 @@ Labs_plot <- Labs %>%
   mutate(OOS = ifelse((Value > UL | Value < LL),1,0)) %>%
   # Add flag if any measurement has ever come back out of spec
   group_by(Name) %>%
-  mutate(Monitor = max(OOS))
+  mutate(Monitor = max(OOS)) %>%
+  unnest(Value)
   
 Labs_plot_tmp <- data.frame()
 Labs_plot_out <- data.frame()
@@ -868,6 +942,30 @@ for(j in (unique(Labs_plot$Name))){
 
 
 
+```
+
+### Current
+```{r}
+out_current <- Labs_plot_out %>%
+arrange(Category, Name) %>%
+#filter(OOS == 1) %>%
+# filter(Date >= Sys.Date()-365) %>%
+filter(Date == max(Labs_plot_out$Date)) %>%  
+mutate( UL = ifelse(is.null(UL) | is.na(UL) | is.nan(UL), Inf, UL ))  %>% #Set limit to inf if no limit
+mutate( LL = ifelse(is.null(LL) | is.na(LL) | is.nan(LL), -Inf, LL ))  %>% #Set limit to inf if no limit  
+mutate( Value = cell_spec(Value, "html", color = ifelse((Value > UL | Value < LL), "red", "green"))) %>% #Color if OOS      
+  formattable::format_table(
+  x = .,
+  formatters = list(
+    align=c("l")
+  )
+) %>%
+  kable_styling("striped", full_width = F) %>%
+  htmltools::HTML() %>%
+  shiny::div() %>%
+  sparkline::spk_add_deps()
+
+out_current
 ```
 
 
@@ -937,6 +1035,67 @@ mutate( Value = cell_spec(Value, "html", color = ifelse((Value > UL | Value < LL
 
 out
 ```
+
+
+### Individual Trends
+```{r}
+# TODO: add conditional smoothing https://rafalab.github.io/dsbook/smoothing.html
+
+for(q in unique(Labs_plot$Name)){
+  #q="Ferritin (ng/mL)"
+  Labs_charts <- Labs_plot  %>%
+    filter(Name %in% c(q)) %>%
+    arrange(Date) 
+
+  limits <- Limits %>%
+    filter(Name == q)
+
+  span <- 60
+
+  fit <- with(Labs_charts, 
+              ksmooth(Date, Value, kernel = "box", bandwidth = span))
+
+  fit <- data.frame(Date = fit$x, smooth = fit$y) %>%
+    mutate(smooth = as.numeric(smooth)) %>%
+    filter(!is.na(smooth))
+
+  p <- Labs_charts %>% #mutate(smooth = fit$y) %>%
+    mutate(Color = ifelse(OOS < 1, "grey", "red")) %>%
+    #merge(fit,by=c("Date"), all=TRUE) %>%
+    # ggplot(aes(Date, Value, color = Color)) +
+    ggplot(aes(Date, Value, color = Color)) +
+    geom_point(size = 1.5, alpha = .5) + 
+    scale_color_identity() +
+    #geom_point(size = 1.5, alpha = .5, color = "grey") + 
+    geom_line(color="grey")+
+    {if(is.numeric(limits$LL)) geom_hline(yintercept = limits$LL, color="lightblue") } + 
+    {if(is.numeric(limits$Optimal)) geom_hline(yintercept = limits$Optimal, color="lightgreen")} +
+    {if(is.numeric(limits$UL)) geom_hline(yintercept = limits$UL, color="lightblue")} +
+    geom_line(data = fit, aes(Date, smooth), color="salmon") +
+    #geom_smooth(span = 14, color="red")
+     #scale_x_date(date_labels = "%Y/%m/%d", date_breaks = "3 month") +
+    #scale_y_continuous(limits=c(limits$LL, limits$UL)) +
+     #scale_y_continuous(limits=c(100, 175)) +
+     labs(x = "Year-Month", y = q) +
+      theme(axis.text.x=element_text(angle=60, hjust=1),
+            legend.title = element_blank(),
+            legend.position = "none",
+            panel.border = element_blank(),
+            panel.background = element_blank(),
+            panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank()) 
+  
+  plot_out <- ggplotly(p) %>% 
+    layout(title = list(text = q, y = 0.95),
+       #xaxis = list(showticklabels = FALSE),
+       legend = list(orientation = "h",
+                     y = 0, x = 0))
+  
+  print(plot_out)
+}
+
+```
+
 
 
  ### Control Charts 
