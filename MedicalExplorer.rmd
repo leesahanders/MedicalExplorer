@@ -49,6 +49,7 @@ cache="C:/Users/Leesah/Documents/Cache"
 
 #Run this in the console before anything else to authenticate with google drive
 #googledrive::drive_auth(use_oob = TRUE, email = "lisamaeanders@gmail.com",cache=cache)
+#gs4_auth(token = drive_token())
 
 
 #set global drive account
@@ -68,33 +69,18 @@ drive_user()
 File = "https://docs.google.com/spreadsheets/d/1ycUwcrZkmSIh44YkqvTGOJWRjO2YmPvpJJcvorVof0U/edit#gid=932390330"
 
 Records <- read_sheet(File, sheet = "Records")
-
 Doctors <- read_sheet(File, sheet = "Doctors")
-
 Medicines <- read_sheet(File, sheet = "Medicines")
-
 History <- read_sheet(File, sheet = "History")
-
 Thyroid <- read_sheet(File, sheet = "Thyroid")
-
 Labs <- read_sheet(File, sheet = "Labs")
-
 Temperature <- read_sheet(File, sheet = "Temperature")
-
 Vitals <- read_sheet(File, sheet = "Vitals")
-
 Limits <- read_sheet(File, sheet = "Limits")
-
 Immunizations <- read_sheet(File, sheet = "Immunizations")
-
 Period <- read_sheet(File, sheet = "Period")
 
 Lisa_picture <- "MVIMG_20200402_143008.jpg"
-
-
-#googledrive functions 
-#googledrive::drive_find()
-#googledrive::drive_get()
 
 ```
 
@@ -1093,11 +1079,13 @@ for(i in 1:length(tests) ){
             panel.grid.major = element_blank(),
             panel.grid.minor = element_blank()) 
   
-  l[[i]] <- ggplotly(p) %>% 
+  l[[i]] <- ggplotly(p, width = 600, height = 400) %>% 
     layout(title = list(text = q, y = 0.95),
        #xaxis = list(showticklabels = FALSE),
        legend = list(orientation = "h",
                      y = 0, x = 0))
+        
+       
   
   #print(plot_out)
 }
